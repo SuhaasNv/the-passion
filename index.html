@@ -1499,8 +1499,8 @@ function interior(s,o={}){
   s.walls({mixL:o.wall||M(.04,.16,0,.3),mixR:o.wallR||shade(o.wall||M(.04,.16,0,.3),.08),h:o.h});
 }
 
-const P04_={no:'04',title:'The Upper Room',quote:'Take, eat; this is my body.',ref:'Matthew 26:26',
-  gx:2*B,gy:0,w:12,d:12,wallH:4.3,tone:{night:.28},focus:[6.5,5.4,1],fz:1.7,mood:{warm:.05},
+const P04_={no:'05',title:'The Upper Room',quote:'Take, eat; this is my body.',ref:'Matthew 26:26',
+  gx:1*B,gy:1*B,w:12,d:12,wallH:4.3,tone:{night:.28},focus:[6.5,5.4,1],fz:1.7,mood:{warm:.05},
   build(s){
     const floor=M(0,.3,0,.3);
     interior(s,{floor,wall:M(0,.16,0,.26)});
@@ -1750,8 +1750,8 @@ const P03={no:'03',title:'The Temple',quote:'My house shall be called a house of
 };
 
 // ---- 05 Washing the Feet -------------------------------------------------
-const P05={no:'05',title:'Washing the Feet',quote:'Lord, you shall never wash my feet.',ref:'John 13:8',
-  gx:1*B+1.2,gy:1*B+1.2,w:10,d:10,wallH:4.1,tone:{night:.3},focus:[4.8,5.2,.6],fz:1.8,
+const P05={no:'04',title:'Washing the Feet',quote:'Lord, you shall never wash my feet.',ref:'John 13:8',
+  gx:2*B+1.2,gy:1.2,w:10,d:10,wallH:4.1,tone:{night:.3},focus:[4.8,5.2,.6],fz:1.8,
   build(s){
     const floor=M(0,.26,0,.26);
     interior(s,{floor,wall:M(0,.14,0,.28)});
@@ -2334,7 +2334,7 @@ const META=[
   ['02','The Entry into Jerusalem','Hosanna! Blessed is he who comes in the name of the Lord.','Mark 11:9',0,1*B,12,12],
   ['03','The Temple','My house shall be called a house of prayer.','Matthew 21:13',1*B,0,12,12],
   ['04'],
-  ['05','Washing the Feet','Lord, you shall never wash my feet.','John 13:8',1*B+1.2,1*B+1.2,10,10],
+  ['05'],
   ['06'],
   ['07','The Betrayal','Judas, would you betray the Son of Man with a kiss?','Luke 22:48',0,3*B,12,12],
   ['08','The Arrest','Put your sword back into its place.','Matthew 26:52',1*B,2*B,12,12],
@@ -2352,8 +2352,8 @@ const META=[
   ['20','The Garden','Jesus said to her, “Mary.” She turned and said, “Rabboni!”','John 20:16',3*B,3*B,12,12],
   ['21','The Final Dawn','Very early on the first day of the week, when the sun had risen.','Mark 16:2',3*B,4*B,B+12,12],
 ];
-const BUILT={'04':P04_,'06':P06_};
-if(typeof P01!=='undefined')Object.assign(BUILT,{'01':P01,'02':P02,'03':P03,'05':P05});
+const BUILT={'05':P04_,'06':P06_};
+if(typeof P01!=='undefined')Object.assign(BUILT,{'01':P01,'02':P02,'03':P03,'04':P05});
 if(typeof P07!=='undefined')Object.assign(BUILT,{'07':P07,'08':P08,'09':P09,'10':P10});
 if(typeof P11!=='undefined')Object.assign(BUILT,{'11':P11,'12':P12,'13':P13,'14':P14,'15':P15});
 if(typeof P16!=='undefined')Object.assign(BUILT,{'16':P16,'17':P17,'18':P18,'19':P19,'20':P20,'21':P21});
@@ -2415,7 +2415,7 @@ function nearestPlate(){const ws=[cam.x,cam.y];const hit=sceneAt(ws[0],ws[1]);if
 const cam={x:0,y:0,z:0.2,vx:0,vy:0};
 const tour={state:'intro',idx:-1,t0:0,from:null,to:null,dur:0,auto:false,finalAt:0,holdStart:0,locked:-1};
 cam.x=SHEET.w/2;cam.y=SHEET.h/2;cam.z=fitAllZ()*.92;
-const HOLD=[9,9,9,12,10,12,10,9,10,10,11,9,10,13,11,10,10,10,12,13,13];
+const HOLD=[9,9,9,10,12,12,10,9,10,10,11,9,10,13,11,10,10,10,12,13,13];
 let now=0;
 function travelTo(v,dur,then){tour.from={x:cam.x,y:cam.y,z:cam.z};tour.to=v;tour.t0=now;tour.dur=dur;tour.then=then;tour.moving=true;}
 function travelDur(v){const d=Math.hypot(v.x-cam.x,v.y-cam.y);const zr=Math.abs(Math.log(v.z/cam.z));return clamp(2.2+d/1800+zr*.8,2.4,6);}
@@ -2744,7 +2744,7 @@ function initAudio(){
 }
 const SOUNDS=[
   {crowd:.32,wind:.12,birds:.5,steps:.25,room:.05},{crowd:.75,birds:.3,steps:.35},{crowd:.36,room:.2,birds:.35},
-  {room:.5,fire:.08,crackle:.15},{room:.45,crackle:.06,water:.5},{night:.4,wind:.18},
+  {room:.45,crackle:.06,water:.5},{room:.5,fire:.08,crackle:.15},{night:.4,wind:.18},
   {night:.2,wind:.25,fire:.1,crackle:.3,steps:.35,crowd:.12},{wind:.22,fire:.1,crackle:.25,steps:.55,crowd:.18},{fire:.2,crackle:.7,night:.15,crowd:.1,rooster:1},
   {crowd:.5,room:.15},{crowd:.45,steps:.6,wind:.18},{wind:.3,steps:.3,birds:.08},
   {wind:.45,crowd:.1,drone:.2},{wind:.32,drone:.36},{drone:.42,wind:.06},
