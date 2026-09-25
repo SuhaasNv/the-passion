@@ -52,7 +52,40 @@
   .fin .a.show,.fin .b.show{opacity:1;}
   .fin .b span{display:block;font:500 9.5px/1.7 var(--label);letter-spacing:.3em;text-transform:uppercase;font-style:normal;}
 
+  /* start: a small museum label laid on the sheet */
+  .start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:opacity .9s ease;}
+  .start.gone{opacity:0;}
+  .start.gone .st{pointer-events:none;}
+  .st{pointer-events:auto;width:300px;box-sizing:border-box;padding:22px 24px 20px;background:rgba(243,236,222,.96);color:var(--navy);
+    border:1px solid rgba(38,52,94,.32);box-shadow:3px 3px 0 rgba(212,83,63,.22);text-align:left;font-family:var(--label);}
+  .st .k{font:600 9.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--red);}
+  .st h1{margin:12px 0 0;font:600 20px/1.1 var(--label);letter-spacing:.3em;text-transform:uppercase;}
+  .st .s{margin-top:8px;font:italic 14px/1.4 var(--serif);color:#2f3b62;}
+  .st p{margin:12px 0 0;font:12px/1.5 var(--serif);color:#3a4468;}
+  .st button{margin-top:18px;appearance:none;cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:#f3ecde;
+    font:600 11px/1 var(--label);letter-spacing:.3em;text-transform:uppercase;padding:11px 18px 11px 20px;border-radius:0;box-shadow:2px 2px 0 var(--red);}
+  .st button:hover{background:#1b2750;}
+  .st button:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
+  .st .h{margin-top:14px;font:9.5px/1.5 var(--mono);letter-spacing:.06em;color:rgba(38,52,94,.6);}
+
+  /* the two arrows in the margins */
+  .nav{position:fixed;top:50%;width:48px;height:48px;margin-top:-24px;border-radius:50%;appearance:none;cursor:pointer;padding:0;
+    border:1px solid rgba(38,52,94,.4);background:rgba(243,236,222,.92);color:var(--navy);box-shadow:2px 2px 0 rgba(212,83,63,.25);
+    font:300 30px/44px var(--serif);text-align:center;opacity:0;visibility:hidden;transition:opacity .4s, transform .2s, background .2s;}
+  .nav.show{opacity:1;visibility:visible;}
+  .nav:hover{background:#f7efdc;transform:scale(1.06);}
+  .nav:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
+  .nav.prev{left:18px;} .nav.next{right:18px;}
+  .nav span{position:absolute;top:50%;transform:translateY(-50%);white-space:nowrap;font:600 9.5px/1 var(--label);letter-spacing:.12em;text-transform:uppercase;
+    color:var(--navy);background:rgba(243,236,222,.95);border:1px solid rgba(38,52,94,.25);padding:5px 7px;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .nav.prev span{left:58px;} .nav.next span{right:58px;}
+  .nav:hover span,.nav:focus-visible span{opacity:1;}
+
   @media (max-width:640px){
+    .nav{width:40px;height:40px;margin-top:-20px;font-size:26px;line-height:37px;}
+    .nav.prev{left:8px;} .nav.next{right:8px;}
+    .nav span{display:none;}
+    .st{width:calc(100% - 40px);max-width:320px;}
     .card{left:10px;right:10px;bottom:52px;width:auto;}
     .ctl{right:10px;left:10px;bottom:10px;justify-content:flex-end;}
     .hint{display:none;}
@@ -72,7 +105,7 @@
 </div>
 
 <div class="status" id="status">Inking plates…</div>
-<div class="hint" id="hint">drag to wander · scroll or pinch to zoom<br>click a plate to look closer</div>
+<div class="hint" id="hint" style="opacity:0">drag to wander · scroll or pinch to zoom<br>click a plate or zoom in to lock onto it</div>
 <div class="tip" id="tip"></div>
 
 <div class="fin" id="fin">
@@ -80,10 +113,22 @@
   <div class="b" id="finB"><span>The end of the journey</span><span>is the beginning of the story.</span></div>
 </div>
 
+<div class="start" id="start">
+  <div class="st" role="dialog" aria-labelledby="stT">
+    <div class="k">A print in four inks · 21 plates</div>
+    <h1 id="stT">The Passion</h1>
+    <div class="s">From the Upper Room to the Garden Tomb</div>
+    <p>Small rooms and gardens printed on one sheet. Walk through them in order, or wander.</p>
+    <button id="bStart">Start</button>
+    <div class="h">‹ › or arrow keys to turn the plates<br>scroll or pinch to zoom · click a plate to lock onto it</div>
+  </div>
+</div>
+
+<button class="nav prev" id="nPrev" aria-label="Previous plate">‹<span id="lPrev"></span></button>
+<button class="nav next" id="nNext" aria-label="Next plate">›<span id="lNext"></span></button>
+
 <div class="ctl" id="ctl">
-  <button id="bPrev" title="Previous plate (←)" aria-label="Previous plate">‹</button>
-  <button id="bPlay" title="Pause or resume the tour (space)" aria-label="Pause tour">❚❚</button>
-  <button id="bNext" title="Next plate (→)" aria-label="Next plate">›</button>
+  <button id="bPlay" title="Play the guided tour (space)" aria-label="Play the guided tour">▶ tour</button>
   <button id="bAll" title="See the whole sheet (0)" aria-label="Whole sheet">▢</button>
   <button id="bSnd" title="Sound (s)" aria-label="Toggle sound">♪ off</button>
 </div>
@@ -257,7 +302,10 @@ function tone(m){
 // ---------------------------------------------------------------------
 let X=null;                               // current 2D context
 let OFF={n:[0,0],r:[0,0],t:[0,0],y:[0,0]};   // per-ink misregistration
-function pathPoly(pts,dx,dy){X.beginPath();X.moveTo(pts[0][0]+dx,pts[0][1]+dy);for(let i=1;i<pts.length;i++)X.lineTo(pts[i][0]+dx,pts[i][1]+dy);X.closePath();}
+let BBT=null;          // when set, every path widens this box (used to crop printed layers)
+let LIVE_T=null;       // seconds, while a live (animated) element is being drawn
+function bbAdd(x,y){if(BBT){if(x<BBT[0])BBT[0]=x;if(y<BBT[1])BBT[1]=y;if(x>BBT[2])BBT[2]=x;if(y>BBT[3])BBT[3]=y;}}
+function pathPoly(pts,dx,dy){if(BBT)for(const p of pts)bbAdd(p[0]+dx,p[1]+dy);X.beginPath();X.moveTo(pts[0][0]+dx,pts[0][1]+dy);for(let i=1;i<pts.length;i++)X.lineTo(pts[i][0]+dx,pts[i][1]+dy);X.closePath();}
 function knock(pts){X.globalCompositeOperation='source-over';X.globalAlpha=1;X.fillStyle=PAPER_PAT;pathPoly(pts,0,0);X.fill();}
 function inks(pts,mix,alpha=1){
   for(const k of INK_KEYS){const d=mix[k];if(!(d>0.035))continue;
@@ -285,7 +333,7 @@ function line(pts,o={}){
   const off=OFF[ink]||[0,0];
   X.globalCompositeOperation='multiply';X.globalAlpha=o.alpha??.93;X.fillStyle=inkCss(ink);
   let runL=[],runR=[];
-  const flush=()=>{if(runL.length>1){X.beginPath();X.moveTo(runL[0][0],runL[0][1]);for(let i=1;i<runL.length;i++)X.lineTo(runL[i][0],runL[i][1]);for(let i=runR.length-1;i>=0;i--)X.lineTo(runR[i][0],runR[i][1]);X.closePath();X.fill();}runL=[];runR=[];};
+  const flush=()=>{if(runL.length>1){if(BBT){for(const p of runL)bbAdd(p[0],p[1]);for(const p of runR)bbAdd(p[0],p[1]);}X.beginPath();X.moveTo(runL[0][0],runL[0][1]);for(let i=1;i<runL.length;i++)X.lineTo(runL[i][0],runL[i][1]);for(let i=runR.length-1;i>=0;i--)X.lineTo(runR[i][0],runR[i][1]);X.closePath();X.fill();}runL=[];runR=[];};
   for(let i=0;i<R.length;i++){
     const s=S[i];if(inGap(s)){flush();continue;}
     const a=R[Math.max(0,i-1)],b=R[Math.min(R.length-1,i+1)];let nx=-(b[1]-a[1]),ny=b[0]-a[0];const nl=Math.hypot(nx,ny)||1;nx/=nl;ny/=nl;
@@ -341,8 +389,9 @@ class Scene{
   fp(a,z=0){return a.map(p=>this.P(p[0],p[1],p[2]??z));}
   wl(a,x=0){return a.map(p=>this.P(x,p[0],p[1]));}   // points (y,z) on the plane x=const
   wr(a,y=0){return a.map(p=>this.P(p[0],y,p[1]));}   // points (x,z) on the plane y=const
-  add(depth,fn,x,y){this.items.push({depth,fn,x,y,i:this.items.length});}
-  at(x,y,fn,bias=0){this.add(x+y+bias,fn,x,y);}
+  add(depth,fn,x,y,live){this.items.push({depth,fn,x,y,i:this.items.length,live:!!live,seed:(this.seed+this.items.length*131)>>>0});}
+  at(x,y,fn,bias=0,live){this.add(x+y+bias,fn,x,y,live);}
+  liveAt(depth,fn,x,y){this.add(depth,fn,x,y,true);}
   light(x,y,r,k=1,warm=.5){this.lights.push({x,y,r,k,warm});}
   toneAt(x,y){
     const base=this.tone;if(!base)return null;if(x===undefined||!this.lights.length)return base;
@@ -358,14 +407,33 @@ class Scene{
   groundAt(x,y){let z=0;for(const t of this.terraces||[])if(t.z>z&&inPoly([x,y],t.poly))z=t.z;return z;}
   // true when every sample of a footprint rests on one level (nothing overhangs a terrace edge)
   supported(x,y,w,d,z){const pts=[[x,y],[x+w,y],[x+w,y+d],[x,y+d],[x+w/2,y+d/2]];return pts.every(p=>Math.abs(this.groundAt(p[0],p[1])-z)<.01);}
-  render(ctx){
-    X=ctx;seed(this.seed);
+  // Print the plate as a stack: static ink layers with live (animated) elements between them,
+  // so a moving figure is still overlapped correctly by whatever stands in front of it.
+  render(){
+    seed(this.seed);
     const r=mulberry32(this.seed+5);const o=()=>[(r()-.5)*2.6*Q,(r()-.5)*2.6*Q];
     OFF={n:[0,0],r:o(),t:o(),y:o()};
     this.items.sort((a,b)=>a.depth-b.depth||a.i-b.i);
-    for(const it of this.items){curTone=this.toneAt(it.x,it.y);it.fn();}
-    curTone=null;
+    const W=this.cw,H=this.ch,layers=[];let cur=null,scratch=null;
+    const flush=()=>{if(!cur)return;
+      if(cur.live){layers.push({live:true,items:cur.items});}
+      else if(!layers.length){const c=makeCanvas(W,H);X=c.getContext('2d');for(const it of cur.items){curTone=this.toneAt(it.x,it.y);it.fn();}layers.push({img:c,x:0,y:0,w:W,h:H});}
+      else{scratch=scratch||makeCanvas(W,H);const g=scratch.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,W,H);X=g;BBT=[1e9,1e9,-1e9,-1e9];
+        for(const it of cur.items){curTone=this.toneAt(it.x,it.y);it.fn();}
+        const b=BBT;BBT=null;const x0=Math.max(0,Math.floor(b[0]-6)),y0=Math.max(0,Math.floor(b[1]-6)),x1=Math.min(W,Math.ceil(b[2]+6)),y1=Math.min(H,Math.ceil(b[3]+6));
+        if(x1>x0&&y1>y0){const c=makeCanvas(x1-x0,y1-y0);c.getContext('2d').drawImage(scratch,x0,y0,x1-x0,y1-y0,0,0,x1-x0,y1-y0);layers.push({img:c,x:x0,y:y0,w:x1-x0,h:y1-y0});}}
+      cur=null;};
+    for(const it of this.items){if(!cur||cur.live!==it.live){flush();cur={live:it.live,items:[]};}cur.items.push(it);}
+    flush();
+    if(!layers.length||!layers[0].img)layers.unshift({img:makeCanvas(W,H),x:0,y:0,w:W,h:H});
+    curTone=null;this.layers=layers;
+    // a flattened pull (live elements at rest) for the overview
+    const flat=makeCanvas(W,H),fg=flat.getContext('2d');
+    for(const L of layers){if(L.img)fg.drawImage(L.img,L.x,L.y);else{X=fg;LIVE_T=0;for(const it of L.items){curTone=this.toneAt(it.x,it.y);seed(it.seed);it.fn(0);}LIVE_T=null;}}
+    curTone=null;this.liveCount=layers.reduce((a,L)=>a+(L.live?L.items.length:0),0);
+    return flat;
   }
+  drawLive(L,T){LIVE_T=T;for(const it of L.items){curTone=this.toneAt(it.x,it.y);seed(it.seed);it.fn(T);}LIVE_T=null;curTone=null;}
 
   // ---- ground & walls -------------------------------------------------
   base(o={}){
@@ -901,7 +969,7 @@ function poseGeo(pose,o,rv){
     G.sh=[[-9,-58],[9,-58]];G.head=[2,-73];G.neck=-64;G.waist=-34;
     G.robe=[[-4,-66],[4,-66],[10.5,-62],[13,-54],[11,-42],[10,-34],[13,-26],[21,-14],[24,-5],[22,-1],[6,-1],[-6,-1],[-12,-4],[-13,-14],[-10.5,-26],[-10,-34],[-11,-46],[-11.5,-59]];
     G.folds=[[[4,-30],[14,-8]],[[-4,-30],[-6,-6]]];
-    G.mantle=[[-3,-65],[-12,-60],[-12.5,-46],[-12,-32],[-13,-14],[-8,-10],[6,-14],[16,-18],[12,-30],[11,-40],[4,-48],[-1,-58]];
+    G.mantle=[[-3,-65],[-12,-60],[-12.5,-46],[-12,-32],[-13,-14],[-8,-10],[6,-14],[16,-18],[12,-30],[11,-40],[4,-48],[2,-53],[-1,-58]];
     G.mFolds=[[[-8,-52],[4,-30]],[[-10,-40],[6,-20]]];
     G.mBack=[[-12,-60],[12,-60],[13,-40],[16,-14],[-12,-8],[-13,-30]];
     G.feet=[[-12,-1.5]];
@@ -932,6 +1000,7 @@ function poseGeo(pose,o,rv){
   return G;
 }
 
+function liveOrAnim(s,fn){if(LIVE_T!==null)fn(LIVE_T);else s.anim(fn);}
 function drawFigure(s,fx,fy,o){const wasFine=FINE;FINE=true;try{return drawFigure_(s,fx,fy,o);}finally{FINE=wasFine;}}
 function drawFigure_(s,fx,fy,o){
   const rv=mulberry32(o.id??((fx*7.3+fy*13.1)|0));
@@ -939,10 +1008,15 @@ function drawFigure_(s,fx,fy,o){
   const sc=H*FIG*s.Uq/100;
   const dir=o.dir||'SE';const flip=(dir==='SE'||dir==='NE')?1:-1;const back=(dir==='NE'||dir==='NW');
   let pose=o.pose||'stand';const lie=pose==='lie';if(lie)pose='stand';
-  const G=poseGeo(pose,o,rv);
+  let G=poseGeo(pose,o,rv);
+  if(o.pose2&&o.poseK>0){const G2=poseGeo(o.pose2,o,mulberry32(o.id??1)),k=o.poseK;
+    const la=(a,b)=>a.length===b.length?a.map((p,i)=>[lerp(p[0],b[i][0],k),lerp(p[1],b[i][1],k)]):(k<.5?a:b);
+    const B={};for(const key in G){const a=G[key],b=G2[key];if(typeof a==='number')B[key]=lerp(a,b,k);else if(key==='folds'||key==='mFolds')B[key]=k<.5?a:b;else if(Array.isArray(a)&&typeof a[0]==='number')B[key]=[lerp(a[0],b[0],k),lerp(a[1],b[1],k)];else B[key]=la(a,b);}
+    G=B;}
   const lean=o.lean||0,cl=Math.cos(lean),sl=Math.sin(lean);
   const ax=o.axis||'x-';
-  const L=(lx,ly)=>{let x=lx*cl-ly*sl,y=lx*sl+ly*cl;if(lie){const k=sc;if(ax==='x-')return[fx+k*(flip*.25*x+C30*y),fy+k*(.55*x+S30*y)];return[fx+k*(flip*.25*x-C30*y),fy+k*(.55*x+S30*y)];}
+  const SY=o.sy||1,BOB=o.bob||0;
+  const L=(lx,ly)=>{ly*=SY;let x=lx*cl-ly*sl,y=lx*sl+ly*cl-BOB;if(lie){const k=sc;if(ax==='x-')return[fx+k*(flip*.25*x+C30*y),fy+k*(.55*x+S30*y)];return[fx+k*(flip*.25*x-C30*y),fy+k*(.55*x+S30*y)];}
     return[fx+flip*x*sc,fy+y*sc];};
   const LP=a=>a.map(p=>L(p[0],p[1]));
   // head rotation (tilt) around neck
@@ -952,7 +1026,8 @@ function drawFigure_(s,fx,fy,o){
   const skin=o.skin||COL.skin,robe=o.robe||pick(ROBES),hair=o.hair||COL.hairBrown;
   const kind=o.kind||'person';
   const arms=ARMS[o.arms||'down']||ARMS.down;
-  const armPts=(side)=>{const shp=G.sh[side==='b'?0:1];const a=arms[side];return[shp,[shp[0]+a[0][0],shp[1]+a[0][1]],[shp[0]+a[1][0],shp[1]+a[1][1]]];};
+  const arms2=o.arms2&&ARMS[o.arms2],aK=o.armK||0;
+  const armPts=(side)=>{const shp=G.sh[side==='b'?0:1];let a=arms[side];if(arms2&&aK){const b=arms2[side];a=[[lerp(a[0][0],b[0][0],aK),lerp(a[0][1],b[0][1],aK)],[lerp(a[1][0],b[1][0],aK),lerp(a[1][1],b[1][1],aK)]];}return[shp,[shp[0]+a[0][0],shp[1]+a[0][1]],[shp[0]+a[1][0],shp[1]+a[1][1]]];};
   const out={};
   const drawArm=(side,mix)=>{
     const p=armPts(side);const P=LP(p);const w0=(o.child?5:7)*sc*.5*2,w1=w0*.8;
@@ -1024,7 +1099,7 @@ function drawFigure_(s,fx,fy,o){
       }
       if(o.beard&&o.beard!=='none'){shape(HP(BEARDS[o.beard]||BEARDS.full),o.beardMix||hair,{lw:.6});}
       // face
-      const e=L(...HT([6.3,-93.6]));X.globalCompositeOperation='multiply';X.fillStyle=inkCss('n',.95);X.beginPath();X.arc(e[0],e[1],Math.max(.55*Q,.95*sc),0,TAU);X.fill();X.globalCompositeOperation='source-over';
+      const e=L(...HT([6.3,-93.6]));X.globalCompositeOperation='multiply';X.fillStyle=inkCss('n',.95);bbAdd(e[0],e[1]);X.beginPath();X.arc(e[0],e[1],Math.max(.55*Q,.95*sc),0,TAU);X.fill();X.globalCompositeOperation='source-over';
       if(o.closed){line(HP([[5,-93.2],[7.6,-93.4]]),{w:.45,breaks:false});}
       line(HP([[4.6,-96.4],[8,-96.2]]),{w:.45,alpha:.8,breaks:false});
       line(HP([[9.4,-93.2],[10.9,-89.4],[9.2,-88.9]]),{w:.5,breaks:false,taper:false});
@@ -1060,9 +1135,9 @@ function drawHeld(s,what,h,h2,sc,flip,L,o,out){
     if(w==='spear'||w==='staff'){const top=[h[0]+flip*2*sc,h[1]-(w==='spear'?72:56)*sc],bot=[h[0]-flip*1*sc,h[1]+(w==='spear'?38:36)*sc];line([bot,top],{w:w==='spear'?1.2:1.5,breaks:false});
       if(w==='spear')shape([[top[0],top[1]-9*sc],[top[0]+2.2*sc,top[1]-3*sc],[top[0],top[1]+1*sc],[top[0]-2.2*sc,top[1]-3*sc]],COL.stoneMid,{lw:.5});}
     else if(w==='torch'){const t=[h[0]+flip*3*sc,h[1]-14*sc];line([[h[0]-flip*1.5*sc,h[1]+7*sc],t],{w:2.1});shape(ellipsePts(t[0],t[1],2.6*sc,1.6*sc,7),COL.woodDark,{lw:.4});
-      shape(flamePts(t[0],t[1],4*sc,6*sc,0),M(0,.5,0,.9),{raw:true,line:false});out.flame=t;const sz=1.6*sc;const sd=h[0]*.37+h[1];s.anim((T)=>flameDyn(t[0],t[1]-1,sz,T,sd,true));}
-    else if(w==='lamp'){const t=[h[0]+flip*2*sc,h[1]-1*sc];shape([[t[0]-4*sc,t[1]],[t[0]+5*sc,t[1]-1*sc],[t[0]+3*sc,t[1]+2.4*sc],[t[0]-3*sc,t[1]+2.4*sc]],CLAY,{lw:.4});const fx=t[0]+flip*5*sc,fy=t[1]-1.5*sc;const sz=1.1*sc;s.anim((T)=>flameDyn(fx,fy,sz,T,h[0]*.13));}
-    else if(w==='lantern'){const t=[h[0],h[1]+6*sc];line([h,t],{w:.5});shape([[t[0]-3*sc,t[1]],[t[0]+3*sc,t[1]],[t[0]+3.4*sc,t[1]+8*sc],[t[0]-3.4*sc,t[1]+8*sc]],M(.1,.2,0,.7),{lw:.6});line([[t[0],t[1]],[t[0],t[1]+8*sc]],{w:.4});const fx=t[0],fy=t[1]+6*sc;const sz=1*sc;s.anim((T)=>flameDyn(fx,fy,sz,T,h[1]*.3));}
+      shape(flamePts(t[0],t[1],4*sc,6*sc,0),M(0,.5,0,.9),{raw:true,line:false});out.flame=t;const sz=1.6*sc;const sd=h[0]*.37+h[1];liveOrAnim(s,(T)=>flameDyn(t[0],t[1]-1,sz,T,sd,true));}
+    else if(w==='lamp'){const t=[h[0]+flip*2*sc,h[1]-1*sc];shape([[t[0]-4*sc,t[1]],[t[0]+5*sc,t[1]-1*sc],[t[0]+3*sc,t[1]+2.4*sc],[t[0]-3*sc,t[1]+2.4*sc]],CLAY,{lw:.4});const fx=t[0]+flip*5*sc,fy=t[1]-1.5*sc;const sz=1.1*sc;liveOrAnim(s,(T)=>flameDyn(fx,fy,sz,T,h[0]*.13));}
+    else if(w==='lantern'){const t=[h[0],h[1]+6*sc];line([h,t],{w:.5});shape([[t[0]-3*sc,t[1]],[t[0]+3*sc,t[1]],[t[0]+3.4*sc,t[1]+8*sc],[t[0]-3.4*sc,t[1]+8*sc]],M(.1,.2,0,.7),{lw:.6});line([[t[0],t[1]],[t[0],t[1]+8*sc]],{w:.4});const fx=t[0],fy=t[1]+6*sc;const sz=1*sc;liveOrAnim(s,(T)=>flameDyn(fx,fy,sz,T,h[1]*.3));}
     else if(w==='palm'){const n=9,len=34*sc;const cp=[];for(let i=0;i<=n;i++){const t=i/n;cp.push([h[0]+flip*(4*t+Math.sin(t*2.2)*9)*sc,h[1]-len*t+len*.12*t*t]);}
       line(cp,{w:.9});for(let i=2;i<=n;i++){const p=cp[i],l=(9-i*.5)*sc;line([p,[p[0]-flip*l*.9,p[1]+l*.55]],{w:.7,ink:'t',alpha:.95,breaks:false});line([p,[p[0]+flip*l*.9,p[1]+l*.35]],{w:.7,ink:'t',alpha:.95,breaks:false});}}
     else if(w==='jar'){shape(vesselPts(h[0]+flip*1*sc,h[1]+4*sc,6*sc,9*sc,'jar'),M(.02,.08,0,.18),{lw:.5});}
@@ -1086,8 +1161,32 @@ SP.person=function(x,y,o={}){
   if(o.hold==='torch'||(Array.isArray(o.hold)&&o.hold.includes('torch')))this.light(x+.3,y+.3,o.lightR??3.2,1,.85);
   if(o.hold==='lamp'||o.hold==='lantern')this.light(x,y,2,.8,.7);
   const z=o.z??this.groundAt(x,y);if(this.terraces&&o.z!==undefined&&o.z<this.groundAt(x,y)-.01)console.warn('figure below ground',this.no,x,y);
-  this.at(x,y,()=>{const b=this.P(x,y,z);const r=drawFigure(this,b[0],b[1],o);if(o.then)o.then(r);},o.bias||0);
+  if(o.still){this.at(x,y,()=>{const b=this.P(x,y,z);drawFigure(this,b[0],b[1],o);},o.bias||0);return;}
+  // every figure is alive: it breathes, shifts its weight, turns its head, and performs its gesture
+  // a figure that walks in is layered by where it comes to rest
+  const g=o.anim&&o.anim.go;const ex=g?x+g[0]:x,ey=g?y+g[1]:y;
+  this.add(ex+ey+(o.bias||0),(T)=>{const [dx,dy,moving]=advanceOff(this,o.anim,T);const b=this.P(x+dx,y+dy,z+(o.anim&&o.anim.dz?o.anim.dz(T,this):0));this_s=this;drawFigure(this,b[0],b[1],animFig(o,T,moving));},ex,ey,true);
 };
+// how far a figure has walked since the viewer arrived at its plate
+function advanceOff(s,a,T){if(!a||!a.go)return[0,0,false];const g=a.go;if(s.arrivedAt===undefined||!T)return[0,0,false];const L=Math.hypot(g[0],g[1]);const el=Math.max(0,T-s.arrivedAt-(g[3]||0));const d=Math.min(L,el*(g[2]||.3));return[g[0]*d/L,g[1]*d/L,d>0&&d<L];}
+// seconds since a walk-in finished (Infinity before the first arrival)
+function sinceArrival(s,a,T){if(!a||!a.go)return Infinity;if(s.arrivedAt===undefined||!T)return -1;const g=a.go;return T-s.arrivedAt-(g[3]||0)-Math.hypot(g[0],g[1])/(g[2]||.3);}
+let this_s=null;
+function animFig(o,T,moving){
+  const a=o.anim||{};const ph=((o.id??7)*.618)%1*TAU;const r=Object.assign({},o);
+  const per=a.period||3.2;const w=T*TAU/per+ph;const k=.5-.5*Math.cos(w);
+  r.sy=1+.013*Math.sin(T*TAU/(a.breath||(o.pose==='lie'||o.pose==='slump'?4.8:3.6))+ph);
+  r.tilt=(o.tilt||0)+(a.tilt?lerp(a.tilt[0],a.tilt[1],k):.045*Math.sin(T*.55+ph*2)*(noise1(T*.2,(o.id|0)+3)>.4?1:.3));
+  if(a.arms){r.arms=a.arms[0];r.arms2=a.arms[1];r.armK=a.ease===false?(Math.sin(w)>0?1:0):k;}
+  else if(!a.noArms&&ALT_ARMS[o.arms]){const w2=T*TAU/(3.4+((o.id|0)%7)*.45)+ph;r.arms2=ALT_ARMS[o.arms];r.armK=Math.max(0,Math.sin(w2))*.85;}
+  if(a.lean)r.lean=(o.lean||0)+a.lean*Math.sin(w);
+  if(a.bob)r.bob=a.bob*Math.abs(Math.sin(w));
+  if(a.then){const since=sinceArrival(this_s,a,T);const th=a.then;
+    if(since<0){r.dir=th.walkDir||r.dir;r.arms=th.walkArms||'down';r.arms2=null;r.armK=0;r.tilt=o.tilt*.2;}
+    else{const k=smooth(clamp(since/(th.dur||1.4),0,1));if(k<1){r.pose=o.pose;r.pose2=th.pose;r.poseK=k;r.arms=th.walkArms||'down';r.arms2=th.arms;r.armK=k;}else{r.pose=th.pose;}}}
+  if(moving||a.walk){r.walk=true;r.phase=T*(a.stride||6)+ph;r.bob=(r.bob||0)+1.2*Math.abs(Math.sin(r.phase));}
+  return r;
+}
 // a presets registry: Jesus and the disciples keep one design everywhere
 const JESUS={kind:'jesus',robe:COL.jesusRobe,mantle:COL.jesusMantle,hair:COL.jesusHair,hairStyle:'long',beard:'full',skin:M(.03,.3,0,.4),belt:true,id:777};
 const APOSTLES={
@@ -1150,30 +1249,30 @@ SP.crucified=function(x,y,zFeet,o={}){
 };
 // a body wrapped in linen, lying from (x0,y0) to (x1,y1) at height z
 SP.shroud=function(x0,y0,x1,y1,z,o={}){
-  this.at((x0+x1)/2,(y0+y1)/2,()=>{
-    const a=this.P(x0,y0,z),b=this.P(x1,y1,z);const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy);const nx=-dy/l,ny=dx/l;const w=(o.w??.2)*this.Uq;
+  this.at((x0+x1)/2,(y0+y1)/2,(T=0)=>{const [ddx,ddy,mv]=o.go?advanceOff(this,{go:o.go},T):[0,0,false];const bob=mv?Math.abs(Math.sin(T*6))*.02:0;
+    const a=this.P(x0+ddx,y0+ddy,z-bob),b=this.P(x1+ddx,y1+ddy,z-bob);const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy);const nx=-dy/l,ny=dx/l;const w=(o.w??.2)*this.Uq;
     const pts=[];const n=18;for(let i=0;i<=n;i++){const t=i/n;const prof=Math.sin(Math.PI*Math.pow(t,.9))*.85+.25*(t<.15?t/.15:1);const bump=t>.8?.12*Math.sin((t-.8)/.2*Math.PI):0;pts.push([a[0]+dx*t+nx*w*(prof+bump),a[1]+dy*t+ny*w*(prof+bump)-w*.5]);}
     for(let i=n;i>=0;i--){const t=i/n;const prof=Math.sin(Math.PI*Math.pow(t,.9))*.55+.2;pts.push([a[0]+dx*t-nx*w*prof,a[1]+dy*t-ny*w*prof-w*.2]);}
     shape(pts,o.mix||COL.linen,{lw:.8});
     for(let i=1;i<7;i++){const t=i/7;const c=[a[0]+dx*t,a[1]+dy*t-w*.35];line([[c[0]-nx*w*.6,c[1]-ny*w*.6],[c[0]+nx*w*.95,c[1]+ny*w*.95]],{w:.45,alpha:.6});}
     glaze(pts.slice(n+1),M(.08,0,0,0));
-  },o.bias||0);
+  },o.bias||0,!!o.go);
 };
 // animals
-SP.donkey=function(x,y,o={}){this.at(x,y,()=>{const b=this.P(x,y,o.z||0);const u=this.Uq*(o.s||1);const f=o.dir==='SW'?-1:1;const m=o.mix||M(.32,.1,0,.18);
+SP.donkey=function(x,y,o={}){this.at(x,y,(T=0)=>{const [ddx,ddy,mv]=o.go?advanceOff(this,{go:o.go},T):[0,0,false];const gait=mv?Math.sin(T*6.5):0;const b=this.P(x+ddx,y+ddy,o.z||0);b[1]-=mv?Math.abs(gait)*1.2*Q:0;const u=this.Uq*(o.s||1);const f=o.dir==='SW'?-1:1;const m=o.mix||M(.32,.1,0,.18);
   const Lx=(a,c)=>[b[0]+f*a*u,b[1]+c*u];
   glaze(ellipsePts(b[0],b[1],u*.75,u*.2,12),M(.2,0,0,0));
-  for(const [lx,ph] of [[-.42,.1],[.36,-.1]])shape([Lx(lx-.05,-.62),Lx(lx+.05,-.62),Lx(lx+.05+ph*.3,-.02),Lx(lx-.05+ph*.3,-.02)],shade(m,.15),{lw:.6});
+  for(const [lx,ph] of [[-.42,.1+.35*gait],[.36,-.1-.35*gait]])shape([Lx(lx-.05,-.62),Lx(lx+.05,-.62),Lx(lx+.05+ph*.3,-.02),Lx(lx-.05+ph*.3,-.02)],shade(m,.15),{lw:.6});
   shape([Lx(-.62,-.9),Lx(-.3,-1.02),Lx(.3,-1.0),Lx(.52,-.9),Lx(.56,-.62),Lx(.35,-.5),Lx(-.4,-.5),Lx(-.64,-.62)],m,{lw:.85});
   shape([Lx(.4,-.95),Lx(.62,-1.35),Lx(.82,-1.42),Lx(.9,-1.2),Lx(.72,-1.1),Lx(.58,-.75)],m,{lw:.8});
   shape([Lx(.72,-1.42),Lx(.98,-1.3),Lx(1.02,-1.18),Lx(.84,-1.12)],light(m,.3),{lw:.6});
   shape([Lx(.66,-1.4),Lx(.6,-1.72),Lx(.7,-1.44)],m,{lw:.5});shape([Lx(.74,-1.42),Lx(.76,-1.74),Lx(.8,-1.44)],m,{lw:.5});
   dot(...Lx(.84,-1.3),1*Q,M(.9,0,0,0),{line:false});
-  for(const [lx,ph] of [[-.5,-.1],[.44,.12]])shape([Lx(lx-.05,-.6),Lx(lx+.05,-.6),Lx(lx+.05+ph*.3,-.02),Lx(lx-.05+ph*.3,-.02)],m,{lw:.6});
-  line([Lx(-.62,-.85),Lx(-.8,-.6),Lx(-.78,-.45)],{w:.7});
+  for(const [lx,ph] of [[-.5,-.1-.35*gait],[.44,.12+.35*gait]])shape([Lx(lx-.05,-.6),Lx(lx+.05,-.6),Lx(lx+.05+ph*.3,-.02),Lx(lx-.05+ph*.3,-.02)],m,{lw:.6});
+  line([Lx(-.62,-.85),Lx(-.8+Math.sin(T*2.3)*.06,-.6),Lx(-.78+Math.sin(T*2.3+.6)*.1,-.45)],{w:.7});
   line([Lx(.4,-.95),Lx(.62,-1.35)],{w:.4,alpha:.6});
   if(o.blanket)shape([Lx(-.3,-1.05),Lx(.25,-1.04),Lx(.3,-.62),Lx(-.34,-.62)],o.blanket,{lw:.6});
-},o.bias||0);};
+},o.bias||0,!!o.go);};
 SP.sheep=function(x,y,o={}){this.at(x,y,()=>{const b=this.P(x,y,o.z||0);const u=this.Uq*(o.s||.8);const f=o.dir==='SW'?-1:1;const Lx=(a,c)=>[b[0]+f*a*u,b[1]+c*u];
   glaze(ellipsePts(b[0],b[1],u*.45,u*.12,10),M(.2,0,0,0));
   for(const lx of [-.25,.2])line([Lx(lx,-.3),Lx(lx,0)],{w:1.2});
@@ -1270,6 +1369,124 @@ function gardenTomb(s,o={}){
 }
 
 // ---------------------------------------------------------------------
+// 8b. Physics: small particle worlds living inside each plate
+//     (units: world units ≈ metres, seconds; gravity pulls along -z)
+// ---------------------------------------------------------------------
+class Physics{
+  constructor(s,o){this.s=s;this.o=o;this.p=[];this.fx=[];this.acc=0;this.last=null;this.r=mulberry32((s.seed^(o.seed||99))>>>0);}
+  add(q){q.age=0;q.vx=q.vx||0;q.vy=q.vy||0;q.vz=q.vz||0;q.ph=q.ph??this.r()*TAU;this.p.push(q);return q;}
+  step(T){
+    let dt=this.last===null?0:T-this.last;this.last=T;if(dt<0||dt>.25)dt=0;if(!dt)return;const sub=Math.ceil(dt/.03);if(sub>1){this.last-=dt;for(let i=0;i<sub;i++){this.last+=dt/sub;this._step(T-dt+dt*(i+1)/sub,dt/sub);}return;}this._step(T,dt);}
+  _step(T,dt){
+    const o=this.o,r=this.r,s=this.s;
+    const rate=typeof o.rate==='function'?o.rate(T,this):(o.rate||0);
+    this.acc+=dt*rate;while(this.acc>=1){this.acc-=1;const q=o.spawn(r,T,this);if(q)this.add(q);}
+    if(o.tick)o.tick(T,dt,this);
+    const g=o.g??-9.8,drag=o.drag??0,f=Math.exp(-drag*dt);
+    for(const q of this.p){
+      q.age+=dt;if(q.rest){q.restT=(q.restT||0)+dt;continue;}
+      q.vz+=(g+(o.lift||0))*dt;q.vx*=f;q.vy*=f;q.vz*=f;if(o.wind)o.wind(q,T,dt,r);
+      q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt;if(q.spin)q.a=(q.a||0)+q.spin*dt;
+      if(o.contain){if(q.x<.05||q.x>s.w-.05){q.x=clamp(q.x,.05,s.w-.05);q.vx=-q.vx*.4;}if(q.y<.05||q.y>s.d-.05){q.y=clamp(q.y,.05,s.d-.05);q.vy=-q.vy*.4;}}
+      const gz=o.floor?o.floor(q,s):s.groundAt(q.x,q.y);
+      if(q.z<gz){q.z=gz;if(o.hit)o.hit(q,this,r);if(q.dead)continue;
+        if(o.bounce&&Math.abs(q.vz)>(o.stopV??.7)){q.vz=-q.vz*o.bounce;q.vx*=o.fric??.6;q.vy*=o.fric??.6;q.spin=(q.spin||0)*.55;q.bounces=(q.bounces||0)+1;}
+        else{q.vz=0;q.vx=q.vy=0;q.spin=0;q.rest=true;}}
+    }
+    for(const e of this.fx)e.age+=dt;
+    this.fx=this.fx.filter(e=>e.age<e.life);
+    this.p=this.p.filter(q=>!q.dead&&q.age<(q.life||o.life||3)&&!(q.rest&&q.restT>(o.restLife??2.5)));
+    const mx=o.max||90;if(this.p.length>mx)this.p.splice(0,this.p.length-mx);
+  }
+  draw(T){const s=this.s;for(const e of this.fx)e.draw(e,s);for(const q of this.p){const pt=s.P(q.x,q.y,q.z);this.o.draw(q,pt,T,this);}}
+}
+SP.physics=function(o){const sys=new Physics(this,o);this.anim((T)=>{sys.step(T);curTone=o.raw?null:this.tone;sys.draw(T);curTone=null;});return sys;};
+// a ring spreading on still water
+function rippleFx(x,y,z,big=1){return{x,y,z,age:0,life:1.1*big,draw:(e,s)=>{const k=e.age/e.life;const c=s.P(e.x,e.y,e.z);const rx=(.04+.3*k*big)*RX*s.Uq,ry=(.04+.3*k*big)*RY*s.Uq;const pts=ellipsePts(c[0],c[1],rx,ry,18);line(pts.concat([pts[0]]),{w:.5,ink:'t',alpha:.8*(1-k),breaks:false,taper:false});}};}
+// a puff of dust where something lands
+function dustFx(x,y,z,big=1){return{x,y,z,age:0,life:.9,draw:(e,s)=>{const k=e.age/e.life;const c=s.P(e.x,e.y,e.z+k*.25*big);glaze(ellipsePts(c[0],c[1],(4+14*k)*Q*big,(2+6*k)*Q*big,12),M(.05,.05,0,.25*(1-k)),{raw:true});}};}
+
+// ---- presets --------------------------------------------------------
+// embers rising from a flame: buoyant, turbulent, cooling from yellow to red
+SP.sparks=function(x,y,z,o={}){return this.physics({seed:x*97+y*13,rate:o.rate??7,g:-1.2,lift:3.2,drag:1.6,raw:true,life:1.6,floor:()=>-99,
+  spawn:(r)=>({x:x+(r()-.5)*(o.spread??.25),y:y+(r()-.5)*(o.spread??.25),z,vx:(r()-.5)*.5,vy:(r()-.5)*.5,vz:.8+r()*1.4,life:.7+r()*1.1}),
+  wind:(q,T,dt,r)=>{q.vx+=(r()-.5)*5*dt+Math.sin(T*3+q.ph)*.8*dt;q.vy+=(r()-.5)*5*dt;},
+  draw:(q,p)=>{const k=q.age/q.life;const s=(1.3-.7*k)*Q;shape(ellipsePts(p[0],p[1],s,s,5),M(0,.25+.6*k,0,.95*(1-k*.6)),{raw:true,line:false,alpha:1-k*k});}});};
+// water poured from a spout: a falling stream that breaks into ripples where it meets the surface
+SP.pour=function(src,surface,o={}){const pts=[];return this.physics({seed:src[0]*31,rate:o.rate??45,drag:.2,life:2,
+  spawn:(r,T)=>{const on=o.when?o.when(T):true;if(!on)return null;return{x:src[0]+(r()-.5)*.02,y:src[1]+(r()-.5)*.02,z:src[2],vx:o.v[0]+(r()-.5)*.05,vy:o.v[1]+(r()-.5)*.05,vz:o.v[2]+(r()-.5)*.1};},
+  floor:(q)=>Math.hypot(q.x-surface[0],q.y-surface[1])<surface[3]?surface[2]:0,
+  hit:(q,sys,r)=>{q.dead=true;if(r()<.35)sys.fx.push(rippleFx(q.x,q.y,surface[2],.6+r()*.5));},
+  draw:(q,p)=>{const sp=Math.hypot(q.vx,q.vz);const L=Math.min(4,1+sp*.8)*Q;shape([[p[0],p[1]-L],[p[0]+.9*Q,p[1]],[p[0],p[1]+.8*Q],[p[0]-.9*Q,p[1]]],M(.05,0,.6,.05),{raw:true,line:false});}});};
+// leaves or petals shaken loose: heavy air drag, fluttering, then lying on the ground a while
+SP.leaves=function(sources,o={}){return this.physics({seed:o.seed||5,rate:o.rate??.9,g:-9.8,drag:o.drag??7,life:14,restLife:o.rest??5,max:60,
+  spawn:(r)=>{const s=sources[Math.floor(r()*sources.length)];return{x:s[0]+(r()-.5)*(s[3]||1.2),y:s[1]+(r()-.5)*(s[3]||1.2),z:s[2],spin:(r()-.5)*6,a:r()*TAU,c:Math.floor(r()*(o.mixes||[0]).length)};},
+  wind:(q,T,dt)=>{q.vx+=(Math.sin(T*2.1+q.ph)*2.6+(o.breeze||[.4,.2])[0])*dt;q.vy+=(Math.cos(T*1.7+q.ph*1.3)*2.2+(o.breeze||[.4,.2])[1])*dt;q.spin+=Math.sin(T*3+q.ph)*4*dt;},
+  contain:true,
+  draw:(q,p)=>{const k=q.rest?clamp(1-(q.restT-(o.rest??5)+1.2)/1.2,0,1):1;const a=q.a||0;const w=(o.size||2.4)*Q,h=w*.42*Math.abs(Math.cos(a*.7))+.4*Q;
+    const m=(o.mixes||[M(.25,0,.42,.16)])[q.c||0];shape(ellipsePts(p[0],p[1],w,h,8,a),m,{raw:!!o.rawMix,lw:.3,alpha:k,la:.6*k});}});};
+// something tossed by hand that clatters and settles (coins, dice)
+SP.tosser=function(o){return this.physics({seed:o.seed||3,rate:0,g:-9.8,drag:.15,bounce:o.bounce??.45,fric:o.fric??.55,stopV:.55,life:7,restLife:o.rest??1.6,max:12,
+  tick:(T,dt,sys)=>{sys.t=(sys.t||0)+dt;if(sys.t>(o.every||2.4)){sys.t=0;const r=sys.r;for(let i=0;i<(o.n||1);i++){const h=typeof o.from==='function'?o.from(T):o.from;
+    sys.add({x:h[0]+(r()-.5)*.08,y:h[1]+(r()-.5)*.08,z:h[2],vx:o.v[0]+(r()-.5)*(o.jit??.4),vy:o.v[1]+(r()-.5)*(o.jit??.4),vz:o.v[2]+r()*.5,spin:(r()-.5)*24,a:r()*TAU,face:1+Math.floor(r()*6)});}}},
+  floor:o.floor,hit:(q,sys)=>{if(!q.bounces&&o.dust)sys.fx.push(dustFx(q.x,q.y,q.z,.35));},
+  draw:(q,p)=>o.draw(q,p)});};
+// motes drifting in a shaft of light (Brownian motion, no gravity)
+SP.motes=function(box,o={}){return this.physics({seed:o.seed||11,rate:o.rate??5,g:0,drag:1.2,life:7,floor:()=>-99,raw:true,max:50,
+  spawn:(r)=>({x:box[0]+r()*(box[3]-box[0]),y:box[1]+r()*(box[4]-box[1]),z:box[2]+r()*(box[5]-box[2]),life:4+r()*4}),
+  wind:(q,T,dt,r)=>{q.vx+=(r()-.5)*1.2*dt;q.vy+=(r()-.5)*1.2*dt;q.vz+=((r()-.5)*1.2+.08)*dt;},
+  draw:(q,p)=>{const k=Math.sin(Math.PI*q.age/q.life);shape(ellipsePts(p[0],p[1],.9*Q,.9*Q,5),o.mix||M(0,0,0,.6),{raw:true,line:false,alpha:k});}});};
+// dust kicked up from the ground by feet, rising and spreading
+SP.kickDust=function(spots,o={}){return this.physics({seed:o.seed||23,rate:o.rate??3,g:0,lift:.25,drag:1.5,life:2.2,floor:()=>-99,raw:true,max:40,
+  spawn:(r)=>{const s=spots[Math.floor(r()*spots.length)];return{x:s[0]+(r()-.5)*.4,y:s[1]+(r()-.5)*.4,z:(s[2]||0)+.05,vx:(r()-.5)*.4+(o.wind||[.2,0])[0],vy:(r()-.5)*.4+(o.wind||[.2,0])[1],vz:.2,life:1.4+r()*1.2};},
+  draw:(q,p)=>{const k=q.age/q.life;glaze(ellipsePts(p[0],p[1],(3+10*k)*Q,(2+5*k)*Q,10),M(0,.08,0,.18*(1-k)),{raw:true});}});};
+
+// ---- live (animated) scenery ------------------------------------------
+// clouds drifting across a painted wall-sky, printed between the sky and everything in front of it
+SP.driftClouds=function(side,list,o={}){const s=this;this.liveAt(-8.65e8,(T)=>{const len=side==='L'?s.d:s.w;
+  s.onWall(side,()=>{const f=side==='L'?(a,b)=>s.P(0,a,b):(a,b)=>s.P(a,0,b);
+    for(const c of list){const u=((c[0]+T*(o.speed||.08)*(c[3]||1))%(len+3))-1.5;const z=c[1],sz=c[2];const pts=[];const n=10;
+      for(let i=0;i<=n;i++){const a=Math.PI*i/n;const k=1+.3*Math.sin(i*2.3+c[0]);pts.push(f(u-Math.cos(a)*sz*1.6*k,z+Math.sin(a)*sz*.5*k));}
+      shape(pts,o.mix||M(0,0,0,.04),{lw:.7,raw:!!o.raw});}
+    if(o.twinkle){const r0=mulberry32(s.seed+77);for(let i=0;i<o.twinkle;i++){const L=r0()<.5;const uu=r0()*(L?s.d:s.w),zz=s.wallH*(.5+r0()*.45);const p=L?s.P(0,uu,zz):s.P(uu,0,zz);const tw=Math.max(0,Math.sin(T*(1.5+r0()*2)+i*1.7));
+      if((L&&side==='L')||(!L&&side==='R'))shape(ellipsePts(p[0],p[1],(.5+tw*1.1)*Q,(.5+tw*1.1)*Q,6),M(0,0,0,.25+.3*tw),{raw:true,line:false});}}
+  });},0,0);};
+// a field of grain moving in waves of wind
+SP.grain=function(x0,y0,x1,y1,o={}){const s=this;this.liveAt(o.depth??(x0+y0-1),(T)=>{
+  for(let i=0;i<(o.n||260);i++){const x=x0+.15+((i*37)%Math.round((x1-x0-.3)*10))/10,y=y0+.15+((i*53)%Math.round((y1-y0-.3)*10))/10;const p=s.P(x,y,0);
+    const gust=Math.sin(T*1.6-(x+y)*.9)*.5+Math.sin(T*.7-x*.4)*.5;const lean=(((i*7)%5-2)*.3+gust*2.6)*Q;
+    line([[p[0],p[1]],[p[0]+lean*.5,p[1]-5*Q],[p[0]+lean,p[1]-9.5*Q]],{w:.6,alpha:.85,breaks:false,ink:'r'});shape(ellipsePts(p[0]+lean*1.05,p[1]-10.5*Q,1.1*Q,2.4*Q,8,lean*.04),M(.08,.3,0,.85),{lw:.3});}},(x0+x1)/2,(y0+y1)/2);};
+// the great stone of the tomb, rolling back along its groove when you arrive:
+// constant rolling friction (uniform deceleration) and rotation = distance / radius
+function drawStoneDisc(s,x,y,z,r,rot,o={}){const th=o.th??.35,mix=o.mix||COL.stoneMid;
+  const back=s.vcircX(x-th,y,z+r,r,28),front=s.vcircX(x,y,z+r,r,28);
+  const all=back.concat(front);all.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const cross=(o1,a,b)=>(a[0]-o1[0])*(b[1]-o1[1])-(a[1]-o1[1])*(b[0]-o1[0]);const lo=[],up=[];
+  for(const p of all){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
+  for(let i=all.length-1;i>=0;i--){const p=all[i];while(up.length>=2&&cross(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p);}
+  shape(lo.slice(0,-1).concat(up.slice(0,-1)),shade(mix,.18),{lw:.9});
+  shape(front,mix,{lw:1});shape(s.vcircX(x+.01,y,z+r,r*.72,24),light(mix,.2),{lw:.5});
+  // chisel marks turn with the stone
+  for(let i=0;i<5;i++){const a=rot+i*TAU/5,a2=a+.35;const p=(rr_,aa)=>s.P(x+.02,y+Math.cos(aa)*rr_,z+r+Math.sin(aa)*rr_);line([p(r*.3,a),p(r*.62,a2)],{w:.55,alpha:.7,breaks:false});}
+  const hub=s.P(x+.02,y,z+r);dot(hub[0],hub[1],1.6*Q,shade(mix,.2),{lw:.4});
+}
+SP.rollingStone=function(x,yDoor,yRest,z,r,o={}){const s=this;const D=yRest-yDoor,acc=o.decel||1.2,v0=Math.sqrt(2*acc*D),tStop=v0/acc,delay=o.delay??1.6;
+  const at=(T)=>{if(s.arrivedAt===undefined||!T)return[0,false];const el=T-s.arrivedAt-delay;if(el<0)return[0,false];if(el>=tStop)return[D,false];return[v0*el-.5*acc*el*el,true];};
+  this.liveAt(x+.1+yRest,(T)=>{const [d]=at(T);drawStoneDisc(s,x,yDoor+d,z,r,-d/r,o);},x,yRest);
+  // grit crushed out from under the rim while it rolls
+  this.physics({seed:77,rate:(T)=>at(T)[1]?26:0,g:-9.8,drag:.8,bounce:.3,life:1.6,restLife:.8,
+    spawn:(rn,T)=>{const [d]=at(T);return{x:x-.15+(rn()-.5)*.3,y:yDoor+d-r*.2,z:.05,vx:(rn()-.5)*.8,vy:-.4-rn()*.8,vz:.6+rn()*.9};},
+    draw:(q,p)=>shape(ellipsePts(p[0],p[1],1*Q,.8*Q,5),COL.stoneMid,{line:false})});
+};
+// "z z z" rising from someone asleep: letters drift up, sway and fade, one after another
+SP.zzz=function(x,y,z){const s=this;const sd=(x*13+y*7)%3;this.anim((T)=>{for(let i=0;i<3;i++){const ph=((T*.32+sd*.3+i/3)%1);const p=s.P(x,y,z+.2+ph*1.6);
+  const size=(15+ph*14)*Q;X.save();X.globalAlpha=Math.sin(Math.PI*ph);
+  X.font=`italic 700 ${size}px "Iowan Old Style",Palatino,Georgia,serif`;X.textAlign='center';X.textBaseline='middle';const dx=Math.sin(T*1.3+i*2+sd)*5*Q+ph*12*Q;
+  X.lineJoin='round';X.lineWidth=3*Q;X.strokeStyle=inkCss('n',1);X.strokeText('z',p[0]+dx,p[1]);X.fillStyle='#f6e7b8';X.fillText('z',p[0]+dx,p[1]);X.restore();}});};
+// gestures that alternate naturally for each held arm position
+const ALT_ARMS={point:'open',open:'bless',wave:'raise',raise:'wave',raise1:'wave',protest:'open',bless:'open',warm:'hold2',cover:'chest',chest:'cover',reach:'open',pray:'clasp',wash:'lift',forward:'point'};
+
+// ---------------------------------------------------------------------
 // 8. The plates — twenty-one dioramas
 // ---------------------------------------------------------------------
 const B=BLOCK;
@@ -1313,14 +1530,14 @@ const P04_={no:'04',title:'The Upper Room',quote:'Take, eat; this is my body.',r
     const behind=[[3.1,'bartholomew','SE','open',0],[3.7,'jamesl','SE','point',.05],[4.3,'andrew','SW','protest',0],[4.95,'peter','SE','point',-.05],[5.6,'john','SE','chest',.28],
       [7.4,'thomas','SW','raise1',0],[8.0,'james','SW','open',-.05],[8.65,'philip','SW','chest',0],[9.3,'matthew','SE','open',0],[9.9,'thaddeus','SW','point',0]];
     for(const [x,k,dir,arms,lean] of behind)s.person(x,4.75,P_(APOSTLES[k],{pose:'sit',dir,arms,lean,bias:-30,shadow:false}));
-    s.person(6.5,4.75,P_(JESUS,{pose:'sit',dir:'SW',arms:'open',bias:-30,shadow:false,tilt:.08}));
+    s.person(6.5,4.75,P_(JESUS,{pose:'sit',dir:'SW',arms:'open',bias:-30,shadow:false,tilt:.08,hold:'bread',anim:{arms:['open','lift'],period:4.5}}));
     // ends and the near side
     s.stool(10.9,5.95,.5,COL.woodDark,{depth:16.6});
     s.person(10.9,5.95,P_(APOSTLES.simon,{pose:'sit',dir:'SW',arms:'chest',bias:4}));
     // Judas has risen from the table and is going out into the night, the purse at his side
     s.stool(5.9,6.9,.5,COL.woodDark,{depth:12.6});
-    s.person(4.3,8.4,P_(APOSTLES.judas,{dir:'SW',walk:true,phase:1.4,arms:'hold',hold:'bag',tilt:.12,lean:-.04}));
-    s.person(8.2,8.9,{female:true,robe:M(.05,.12,0,.3),headcover:M(.3,0,.3,.05),dir:'NW',arms:'hold2',hold:'jar',id:401});
+    s.person(4.3,8.4,P_(APOSTLES.judas,{dir:'NW',arms:'hold',hold:'bag',tilt:.12,lean:-.04,anim:{go:[-3.1,1.3,.3,1.8]}}));
+    s.walker(8.4,10.9,8.4,7.8,.22,{female:true,robe:M(.05,.12,0,.3),headcover:M(.3,0,.3,.05),arms:'hold2',hold:'jar',id:401});
     // on the table
     const tz=.9;const TB=8;
     const onT=(fn)=>fn();
@@ -1366,15 +1583,18 @@ const P06_={no:'06',title:'Gethsemane',quote:'Not my will, but yours, be done.',
     // the oil press
     s.cyl(1.3,10.8,0,.75,.45,COL.stoneMid,{lw:.8});s.at(1.3,10.8,()=>{shape(s.vcircY(10.8,1.3,.95,.5,22),COL.stone,{lw:.8});line([s.P(.5,10.8,.95),s.P(2.1,10.8,.95)],{w:1.4});},.1);
     // rock of prayer, and Jesus
-    s.rock(5.5,6.5,.75,{h:.8,mix:COL.stone});
-    s.person(4.55,6.1,P_(JESUS,{pose:'kneel',dir:'SE',arms:'pray',tilt:-.2,bias:.2}));
+    s.rock(3.9,5.2,.72,{h:.85,mix:COL.stone});
+    // he walks on a little from the sleeping three, kneels by the rock, and stays in prayer
+    s.person(4.1,8.7,P_(JESUS,{pose:'stand',dir:'SE',arms:'pray',tilt:-.2,bias:.2,anim:{go:[.55,-2.4,.34,1.2],then:{pose:'kneel',arms:'pray',walkDir:'NE',walkArms:'down',dur:1.6},noArms:true,tilt:[-.3,.02],period:7}}));
     // Peter, James and John asleep
     s.person(8.2,8.3,P_(APOSTLES.peter,{pose:'slump',dir:'SW',arms:'none',closed:true}));
     s.person(9.1,8.9,P_(APOSTLES.john,{pose:'lie',axis:'x-',dir:'SE',arms:'fold',closed:true,bias:.2}));
     s.person(7.4,9.2,P_(APOSTLES.james,{pose:'slump',dir:'SE',arms:'none',closed:true}));
+    for(const [x,y,z] of [[8.2,8.3,.95],[9.1,8.9,.55],[7.4,9.2,.95],[10.5,2.3,.95],[11.1,3.2,.55]])s.zzz(x,y,z);
     // the others, further off by the gate
     s.person(10.5,2.3,P_(APOSTLES.andrew,{pose:'slump',dir:'SW',arms:'none'}));s.person(11.1,3.2,P_(APOSTLES.thomas,{pose:'lie',axis:'y-',dir:'SE',arms:'fold'}));
     s.rock(3.2,8.2,.4,{});s.rock(11.2,6.8,.5,{});s.rock(6.6,10.8,.35,{});
+    s.leaves([[2,2.2,3.4],[6,1.5,3.2],[1.5,6.6,3],[9.9,5.3,3.4],[3.9,10.6,2.8],[10.7,9.6,2.6]],{rate:.8,mixes:[M(.28,0,.45,.12),M(.2,0,.3,.3)],seed:61});
     // a few moths drifting
     s.anim((T)=>{for(let i=0;i<3;i++){const a=T*.3+i*2.1;const p=s.P(4.6+Math.cos(a)*1.6,6.2+Math.sin(a*1.3)*1.2,1.6+Math.sin(a*2)*.4);glaze(ellipsePts(p[0],p[1],1.4*Q,1*Q,6),M(0,0,0,.5),{raw:true});}});
   }
@@ -1413,15 +1633,17 @@ const P01={no:'01',title:'Jerusalem',quote:'Pray for the peace of Jerusalem.',re
     // people of the city
     const r0=mulberry32(101);
     const spots=[[7.3,7.35,'SW','point'],[8,7.6,'NW','hold'],[9.4,7.6,'SE','open'],[6.4,9.8,'SE','down'],[8.9,9.2,'NE','down'],[4.6,8.7,'SW','hold2'],[5.9,5.4,'NW','down'],[3.5,7.4,'SE','down'],
-      [9.2,5.3,'SW','forward'],[4.2,10.9,'NE','down'],[11.2,6.3,'SW','down'],[7.9,5.2,'NE','down']];
+      [9.2,6.0,'SW','forward'],[4.2,10.9,'NE','down'],[11.2,6.3,'SW','down'],[7.9,5.2,'NE','down']];
     for(const [x,y,dir,arms] of spots){const p=crowdPerson(r0);s.person(x,y,Object.assign(p,{dir,arms,hold:arms==='hold'?pick(['jar','bread','bag']):arms==='hold2'?'spice':null}));}
     // merchants behind their counters
     s.person(7.35,6.4,Object.assign(crowdPerson(r0,{female:false}),{dir:'SW',arms:'open',bias:-.6}));s.person(9.3,6.7,Object.assign(crowdPerson(r0,{female:true}),{dir:'SW',arms:'hold',hold:'bread',bias:-.6}));
     s.donkey(10.8,10.5,{dir:'SW',s:.85,blanket:M(0,.5,0,.3)});s.person(10.2,11.2,Object.assign(crowdPerson(r0,{female:false}),{dir:'SW',arms:'forward'}));
     // Jesus: one small figure entering the city with three of his friends
-    s.person(11.3,4.9,P_(JESUS,{dir:'NW',arms:'down'}));s.person(11.7,4.5,P_(APOSTLES.peter,{dir:'NW'}));s.person(11.6,5.4,P_(APOSTLES.john,{dir:'NW'}));
+    s.person(11.3,4.9,P_(JESUS,{dir:'NW',arms:'down',anim:{go:[-2.4,0,.28,1]}}));s.person(11.75,4.4,P_(APOSTLES.peter,{dir:'NW',anim:{go:[-2.4,0,.28,1.3]}}));s.person(11.7,5.45,P_(APOSTLES.john,{dir:'NW',anim:{go:[-2.4,0,.28,1.1]}}));
     s.walker(4.5,11.3,9.5,11.3,.35,Object.assign(crowdPerson(mulberry32(5)),{id:51}));
     s.walker(5.6,4.9,5.6,10.2,.3,Object.assign(crowdPerson(mulberry32(6)),{id:52,off:.5}));
+    s.walker(3,6.3,3,9.2,.28,Object.assign(crowdPerson(mulberry32(7)),{id:53,off:.2,hold:'jar',arms:'hold'}));
+    s.walker(7.6,9.9,10.6,9.9,.32,Object.assign(crowdPerson(mulberry32(8)),{id:54,off:.7}));
     s.flock(4,{side:'R',z:3.4,speed:.03});
   }
 };
@@ -1459,17 +1681,19 @@ const P02={no:'02',title:'The Entry into Jerusalem',quote:'Hosanna! Blessed is h
     s.person(10.2,2,Object.assign(crowdPerson(r0),{bias:3,z:2.4,dir:'SW',arms:'wave',hold:'palm'}));s.person(10.8,5.2,Object.assign(crowdPerson(r0),{bias:3,z:2.2,dir:'SW',arms:'raise'}));s.person(10.4,8.8,Object.assign(crowdPerson(r0,{child:true}),{bias:3,z:2.3,dir:'SW',arms:'raise'}));
     s.palm(8.6,3.9,3,{lean:-.3});s.palm(3.8,9.9,3.2,{lean:.4});s.palm(8.9,11.3,2.6,{lean:-.2});
     // Jesus riding in, the disciples behind
-    s.donkey(6.3,6.4,{dir:'SW',blanket:M(0,0,.55,.3)});
-    s.person(6.28,6.42,P_(JESUS,{pose:'sit',dir:'SW',arms:'bless',z:.52,shadow:false,bias:.05}));
-    s.person(6.9,4.6,P_(APOSTLES.peter,{dir:'SW',walk:true,phase:1}));s.person(5.7,4.2,P_(APOSTLES.john,{dir:'SW',walk:true,phase:3}));
-    s.person(6.5,3.2,P_(APOSTLES.james,{dir:'SW',walk:true,phase:2}));s.person(5.5,2.6,P_(APOSTLES.andrew,{dir:'SW'}));s.person(7,2.1,P_(APOSTLES.thomas,{dir:'SW',walk:true}));
+    const GO=[0,1.7,.2,1.2];
+    s.donkey(6.3,6.4,{dir:'SW',blanket:M(0,0,.55,.3),go:GO});
+    s.person(6.28,6.42,P_(JESUS,{pose:'sit',dir:'SW',arms:'bless',z:.52,shadow:false,bias:.05,anim:{go:GO,stride:6.5,noArms:true,dz:(T,s)=>{const m=advanceOff(s,{go:GO},T)[2];return m?-Math.abs(Math.sin(T*6.5))*.025:0;}}}));
+    for(const [x,y,k,dl] of [[6.9,4.6,'peter',1.5],[5.7,4.2,'john',1.4],[6.5,3.2,'james',1.8],[5.5,2.6,'andrew',2],[7,2.1,'thomas',2.2]])s.person(x,y,P_(APOSTLES[k],{dir:'SW',anim:{go:[0,1.7,.2,dl]}}));
     // the crowd on both sides of the road
     const left=[[4.2,5.2],[4.4,6.6],[4.1,7.8],[4.5,9.1],[4.2,10.4],[3.9,4]];const right=[[8.1,5.6],[8.3,7.2],[8,8.6],[8.4,9.9],[8.2,4.3],[7.9,11]];
     left.forEach(([x,y],i)=>s.person(x,y,Object.assign(crowdPerson(r0),{dir:i%3?'SE':'SW',arms:['wave','raise','open'][i%3],hold:i%3===0?'palm':null})));
     right.forEach(([x,y],i)=>s.person(x,y,Object.assign(crowdPerson(r0),{dir:i%2?'NW':'SW',arms:['raise','wave','point'][i%3],hold:i%3===1?'palm':null})));
     // a man laying his cloak before him, children running ahead
-    s.person(6.1,8.3,Object.assign(crowdPerson(r0,{female:false}),{pose:'kneel',dir:'NE',arms:'lift',hold:'cloak',cloakMix:M(0,.5,0,.4)}));
-    s.person(6.9,9.6,Object.assign(crowdPerson(r0,{child:true}),{dir:'SW',walk:true,arms:'wave',hold:'palm'}));s.person(5.4,10.3,Object.assign(crowdPerson(r0,{child:true}),{dir:'SW',walk:true,phase:2,arms:'raise'}));
+    s.person(6.2,9.4,Object.assign(crowdPerson(r0,{female:false}),{pose:'kneel',dir:'NE',arms:'lift',hold:'cloak',cloakMix:M(0,.5,0,.4),anim:{arms:['lift','reach'],period:2.8}}));
+    s.person(6.9,8.9,Object.assign(crowdPerson(r0,{child:true}),{dir:'SW',arms:'wave',hold:'palm',anim:{go:[0,2.3,.45,.3]}}));s.person(5.5,8.6,Object.assign(crowdPerson(r0,{child:true}),{dir:'SW',arms:'raise',anim:{go:[0,2.6,.5,.6]}}));
+    // palm branches thrown from the roofs flutter down onto the road
+    s.leaves([[10.2,2,3.8,.3],[10.8,5.2,3.6,.3],[3,2.2,3.2,.3],[3,8.1,3.2,.3]],{rate:1.1,breeze:[-.9,.25],drag:4,size:4.4,rest:6,mixes:[M(.15,0,.7,.3),M(.3,0,.6,.2)],seed:21});
     s.flock(3,{side:'L',z:3.3,speed:.04});
   }
 };
@@ -1501,7 +1725,7 @@ const P03={no:'03',title:'The Temple',quote:'My house shall be called a house of
     s.box(8.6,2.4,0,.8,.8,.9,COL.bronze,{after:()=>{const c=s.P(9,2.8,.9);s.anim((T)=>{for(let i=0;i<5;i++){const ph=(T*.18+i*.2)%1;glaze(ellipsePts(c[0]+Math.sin(T*.8+i*1.7)*6*Q*ph,c[1]-ph*90*Q,(3+ph*9)*Q,(2+ph*6)*Q,10),M(.1*(1-ph),0,0,.02),{raw:true});}});}});
     // Jesus teaches, seated on a stone bench; people gather around
     s.box(5.4,5.3,0,1.6,.5,.52,COL.stoneMid,{lw:.8});
-    s.person(6.2,5.55,P_(JESUS,{pose:'sit',dir:'SW',arms:'open'}));
+    s.person(6.2,5.55,P_(JESUS,{pose:'sit',dir:'SW',arms:'open',anim:{arms:['open','bless'],period:3.4}}));
     const r0=mulberry32(303);
     const listeners=[[5.2,7.3,'NE','ground'],[6.1,7.9,'NE','ground'],[7.2,7.4,'NW','ground'],[4.4,6.6,'NE','ground'],[7.9,6.6,'NW','ground'],[6.8,8.9,'NE','ground'],[5.1,8.8,'NE','stand'],[8.6,7.8,'NW','stand'],[4.1,8.1,'NE','ground']];
     listeners.forEach(([x,y,dir,pose],i)=>s.person(x,y,Object.assign(crowdPerson(r0),{pose,dir,arms:pose==='ground'?'down':'fold'})));
@@ -1511,7 +1735,9 @@ const P03={no:'03',title:'The Temple',quote:'My house shall be called a house of
     // money changers, doves and sheep
     s.table(9.3,4.4,1.6,.8,.75,{mix:COL.woodDark});
     s.at(10.1,4.8,()=>{const c=s.P(10.1,4.8,.75);for(let i=0;i<14;i++)shape(ellipsePts(c[0]+rr(-.6,.6)*s.Uq,c[1]+rr(-.2,.2)*s.Uq,2.2*Q,1.4*Q,7),COL.gold,{lw:.35});},6);
-    s.person(10.1,3.9,Object.assign(crowdPerson(r0,{female:false}),{dir:'SW',arms:'forward',bias:-1.5}));
+    s.person(10.1,3.9,Object.assign(crowdPerson(r0,{female:false}),{dir:'SW',arms:'forward',bias:-1.5,anim:{arms:['forward','raise1'],period:2.2,ease:false}}));
+    s.tosser({seed:31,from:[10.15,4.35,1.75],v:[.1,.35,1.6],every:2.2,n:2,floor:(q)=>(q.x>9.3&&q.x<10.9&&q.y>4.4&&q.y<5.2)?.75:0,bounce:.5,dust:false,
+      draw:(q,p)=>{const w=2.3*Q*Math.max(.25,Math.abs(Math.cos(q.a||0)));shape(ellipsePts(p[0],p[1],w,1.5*Q,8),COL.gold,{lw:.35});}});
     s.person(9.4,5.7,Object.assign(crowdPerson(r0,{female:false}),{dir:'NE',arms:'hold',hold:'bag'}));
     for(const [x,y] of [[10.9,6.2],[11.4,6.6]])s.crate(x,y,0,.5,COL.woodLight,{});
     for(const [x,y] of [[11.1,6.4],[11.5,6.8],[10.85,6.95]])s.bird(x,y,.42,{mix:M(0,0,0,.04),s:.3});
@@ -1539,9 +1765,10 @@ const P05={no:'05',title:'Washing the Feet',quote:'Lord, you shall never wash my
     s.cyl(3.3,3.4,0,.1,1.7,COL.bronze,{lw:.6});s.cyl(3.3,3.4,0,.28,.08,COL.bronze,{lw:.5});s.candle(3.3,3.4,1.7,.18,{r:4.5,k:1});
     // Peter on the bench, protesting; Jesus kneels with the basin, a towel at his waist
     s.bench(2.6,5.2,1.8,.55,.5,COL.wood);
-    s.person(3.55,5.47,P_(APOSTLES.peter,{pose:'sit',dir:'SE',arms:'protest'}));
+    s.person(3.55,5.47,P_(APOSTLES.peter,{pose:'sit',dir:'SE',arms:'protest',anim:{arms:['protest','open'],period:2.6,tilt:[-.12,.08]}}));
     s.vessel(4.55,5.55,0,.62,'bowl',COL.bronze,{fill:COL.water});
-    s.person(5.25,5.25,P_(JESUS,{pose:'kneel',dir:'SW',arms:'wash',mantle:null,tilt:.15,
+    s.pour([4.62,5.52,.62],[4.55,5.55,.2,.28],{v:[0,0,0],rate:9,when:(T)=>Math.sin(T*TAU/2.6)>.2});
+    s.person(5.25,5.25,P_(JESUS,{pose:'kneel',dir:'SW',arms:'wash',mantle:null,tilt:.15,anim:{arms:['wash','lift'],period:2.6},
       front:(L,sc)=>{shape([L(-11,-36),L(11,-36),L(12,-28),L(8,-10),L(-2,-12),L(-11,-28)].map(p=>p),COL.linen,{lw:.6});line([L(-10,-34),L(10,-33)],{w:.5});}}));
     s.vessel(5.8,6.3,0,.5,'jug',CLAY);
     // his red mantle, laid aside on the stool
@@ -1581,17 +1808,19 @@ const P07={no:'07',title:'The Betrayal',quote:'Judas, would you betray the Son o
     s.person(2.2,4.4,P_(APOSTLES.james,{pose:'kneel',dir:'SE',arms:'down'}));
     s.person(1.8,7.6,P_(APOSTLES.andrew,{pose:'ground',dir:'SE',arms:'down'}));
     // Judas crosses the gap, arms opening for the kiss
-    s.person(5.55,5.85,P_(APOSTLES.judas,{dir:'SW',arms:'reach',lean:-.05}));
+    s.person(6.4,5.6,P_(APOSTLES.judas,{dir:'NW',arms:'reach',lean:-.05,anim:{go:[-1.1,.25,.28,1],noArms:true}}));
     // the crowd with torches, lanterns, swords and clubs
     const r0=mulberry32(707);
-    s.person(7.2,5.1,soldier({dir:'SW',hold:'torch',arms:'torch',officer:true,id:71}));
-    s.person(7.6,6.3,soldier({dir:'SW',id:72}));
-    s.person(8.4,4.4,soldier({dir:'SW',hold:'torch',arms:'torch',id:73}));
-    s.person(8.9,5.8,priest({dir:'SW',arms:'point',id:74}));
-    s.person(8.3,7.2,Object.assign(crowdPerson(r0,{female:false}),{dir:'SW',hold:'staff',arms:'spear'}));
-    s.person(9.6,4.9,soldier({dir:'SW',id:75}));s.person(9.8,6.6,Object.assign(crowdPerson(r0,{female:false}),{dir:'SW',hold:'lantern',arms:'hold'}));
-    s.person(10.3,3.8,soldier({dir:'NW',hold:'torch',arms:'torch',id:76}));s.person(10.6,7.6,soldier({dir:'SW',id:77}));
-    s.person(11.1,5.6,Object.assign(crowdPerson(r0,{female:false}),{dir:'SW',hold:'torch',arms:'torch'}));
+    const MARCH=(dx,dl)=>({go:[-dx,0,.42,dl],stride:9,noArms:true});
+    s.person(9.9,5.0,soldier({dir:'NW',hold:'torch',arms:'torch',officer:true,id:71,anim:MARCH(2.3,.3)}));
+    s.person(10.2,6.4,soldier({dir:'NW',id:72,anim:MARCH(2.3,.5)}));
+    s.person(10.9,4.3,soldier({dir:'NW',hold:'torch',arms:'torch',id:73,anim:MARCH(2.3,.7)}));
+    for(const [x,y] of [[10,4],[11.1,5.8]])s.sparks(x-.35,y+.25,2.35,{rate:3,spread:.08});
+    s.person(10.9,5.8,priest({dir:'NW',arms:'point',id:74,anim:{go:[-2,0,.4,.6]}}));
+    s.person(10.3,7.3,Object.assign(crowdPerson(r0,{female:false}),{dir:'NW',hold:'staff',arms:'spear',anim:MARCH(2,.8)}));
+    s.person(11.1,4.9,soldier({dir:'NW',id:75,anim:MARCH(1.5,.9)}));s.person(11.4,6.8,Object.assign(crowdPerson(r0,{female:false}),{dir:'NW',hold:'lantern',arms:'hold',anim:MARCH(1.5,1)}));
+    s.person(10.3,3.8,soldier({dir:'NW',hold:'torch',arms:'torch',id:76}));s.person(11.6,7.6,soldier({dir:'NW',id:77,anim:MARCH(1,1.1)}));
+    s.person(11.7,5.3,Object.assign(crowdPerson(r0,{female:false}),{dir:'NW',hold:'torch',arms:'torch',anim:MARCH(1,1.2)}));
   }
 };
 
@@ -1612,20 +1841,21 @@ const P08={no:'08',title:'The Arrest',quote:'Put your sword back into its place.
     s.floorDeco(()=>{shape(s.fp([[6.8,.6],[8.4,.6],[8.2,4],[7,7.5],[4.6,10.5],[3.2,12],[1.6,12],[3.6,9.6],[5.8,7],[6.8,4]]),M(.04,.06,0,.2),{lw:.7});},3);
     s.litFloor(7.4,4.6,[3.8,2.8,1.8],g,{k:.7,warm:.55});
     // the procession leads him away toward the gate
-    s.person(7.6,2.2,soldier({dir:'NE',hold:'torch',arms:'torch',id:81}));
-    s.person(7.2,3.3,soldier({dir:'NE',id:82}));
-    s.person(7.55,4.4,P_(JESUS,{dir:'NE',arms:'clasp',hold:'rope'}));
-    s.person(8.4,4.7,Object.assign(crowdPerson(mulberry32(3),{female:false}),{dir:'NE',hold:'lantern',arms:'hold'}));
-    s.person(7.8,5.6,soldier({dir:'NE',arms:'hold',hold:'rope',id:83}));
-    s.person(6.8,5.9,soldier({dir:'NE',hold:'torch',arms:'torch',id:84}));
+    const LED=(d)=>({go:[0,-1.3,.22,d]});
+    s.person(7.6,2.6,soldier({dir:'NE',hold:'torch',arms:'torch',id:81,anim:LED(1)}));
+    s.person(7.2,3.6,soldier({dir:'NE',id:82,anim:LED(1)}));
+    s.person(7.55,4.6,P_(JESUS,{dir:'NE',arms:'clasp',hold:'rope',anim:LED(1)}));
+    s.person(8.4,4.9,Object.assign(crowdPerson(mulberry32(3),{female:false}),{dir:'NE',hold:'lantern',arms:'hold',anim:LED(1)}));
+    s.person(7.8,5.7,soldier({dir:'NE',arms:'hold',hold:'rope',id:83,anim:LED(1)}));
+    s.person(6.8,6.0,soldier({dir:'NE',hold:'torch',arms:'torch',id:84,anim:LED(1)}));
     s.person(8.6,6.4,priest({dir:'NW',arms:'point',id:85}));
     // Peter's sword, and the servant who stumbles back
     s.person(4.8,7.6,P_(APOSTLES.peter,{dir:'SE',arms:'raise1',hold:'sword'}));
     s.person(5.7,7.2,Object.assign(crowdPerson(mulberry32(8),{female:false}),{dir:'SW',arms:'cover',lean:.12,id:88}));
     // the others run into the trees
-    s.person(2.6,9.3,P_(APOSTLES.thomas,{dir:'SW',walk:true,phase:1.2,lean:-.12,arms:'forward'}));
-    s.person(1.4,7.9,P_(APOSTLES.andrew,{dir:'NW',walk:true,phase:2.5,lean:.1}));
-    s.person(3.8,10.8,P_(APOSTLES.james,{dir:'SW',walk:true,phase:.4,lean:-.12}));
+    s.person(2.6,8.6,P_(APOSTLES.thomas,{dir:'SW',lean:-.12,arms:'forward',anim:{go:[-.3,2.4,.9,.8],stride:11}}));
+    s.person(2.4,7.6,P_(APOSTLES.andrew,{dir:'NW',lean:.1,anim:{go:[-1.8,-.2,.8,1.1],stride:11}}));
+    s.person(4.2,9.6,P_(APOSTLES.james,{dir:'SW',lean:-.12,anim:{go:[-.4,1.9,.9,.5],stride:11}}));
     s.person(10.4,9.6,P_(APOSTLES.john,{dir:'NW',arms:'chest'}));
     s.floorDeco(()=>{shape(s.fp([[4,9.2],[4.8,9.4],[4.6,9.9],[3.8,9.8]]),COL.linen,{lw:.6});},7);
     for(const [x,y,sc] of [[1.6,2.2,1.7],[3.8,2.5,1.4],[1.2,5.2,1.4],[10.6,3.2,1.6],[11.4,10.2,1.3],[1.6,11,1.2],[9.4,10.9,1.3],[5.6,11.2,1.1]])s.olive(x,y,sc,{leaf:M(.28,0,.45,.12)});
@@ -1661,12 +1891,14 @@ const P09={no:'09',title:"Peter's Denial",quote:'Before the rooster crows, you w
     s.person(7.82,5.9,soldier({pose:'sit',dir:'SW',arms:'warm',hold:null,crest:false,id:96}));
     s.person(5.2,5.9,{female:true,robe:M(.04,.2,0,.2),headcover:M(.1,0,.4,.1),dir:'SE',arms:'point',id:95});
     s.stool(5.3,7.5,.5,COL.woodDark);
-    s.person(5.3,7.5,P_(APOSTLES.peter,{pose:'sit',dir:'SE',arms:'protest',tilt:-.05}));
+    s.person(5.3,7.5,P_(APOSTLES.peter,{pose:'sit',dir:'SE',arms:'protest',tilt:-.05,anim:{arms:['protest','chest'],period:2.2,tilt:[-.2,.15]}}));
     s.person(7.3,7.6,Object.assign(crowdPerson(mulberry32(9),{female:false}),{pose:'ground',dir:'NW',arms:'warm'}));
     s.person(6.4,8.5,Object.assign(crowdPerson(mulberry32(11),{female:false}),{dir:'NE',arms:'warm'}));
     s.person(7.9,6.9,soldier({dir:'NW',id:98,arms:'point',hold:null}));
     s.person(4.4,6.8,Object.assign(crowdPerson(mulberry32(12),{female:true}),{dir:'SE',arms:'hips'}));
     s.person(4.9,8.6,Object.assign(crowdPerson(mulberry32(14),{female:false}),{dir:'NE',arms:'fold'}));
+    s.sparks(6.2,6.6,.35,{rate:8,spread:.3});
+    s.walker(10.2,2.6,10.2,6.8,.3,soldier({id:99,hold:'spear',arms:'spear'}));
     // guard at the door
     s.person(3.8,.9,soldier({dir:'SW',id:97}));
     // courtyard things
@@ -1697,9 +1929,11 @@ const P10={no:'10',title:'The Trial',quote:'What is truth?',ref:'John 18:38',
     s.box(.6,2.4,0,3.2,4.6,.6,COL.stone,{depth:-20,after:()=>{line([s.P(.6,7,.3),s.P(3.8,7,.3)],{w:.4,alpha:.5});}});
     s.box(3.8,3.6,0,.45,2.2,.4,COL.stone,{depth:-19,lw:.7});s.box(4.25,3.6,0,.45,2.2,.2,COL.stone,{depth:-18.9,lw:.7});
     s.box(1.8,4.4,.6,.7,.7,.5,COL.gold,{lw:.7});s.box(1.75,4.4,.6,.12,.7,1.35,COL.gold,{lw:.7,bias:-.1});
-    s.person(2.15,4.75,{z:.6,pose:'sit',dir:'SE',arms:'wash',robe:M(.01,.02,0,.06),border:'r',hairStyle:'crop',hair:COL.hairBlack,beard:'none',skin:SKINS[2],id:100,mantle:M(.05,.6,0,.3)});
+    s.person(2.15,4.75,{z:.6,pose:'sit',dir:'SE',arms:'wash',anim:{arms:['wash','hold2'],period:2},robe:M(.01,.02,0,.06),border:'r',hairStyle:'crop',hair:COL.hairBlack,beard:'none',skin:SKINS[2],id:100,mantle:M(.05,.6,0,.3)});
     s.box(2.55,4.85,.6,.36,.36,.5,COL.stoneMid,{lw:.6});s.vessel(2.73,5.03,1.1,.42,'bowl',COL.bronze,{fill:COL.water,bias:.1});
     s.person(3.1,5.55,Object.assign(crowdPerson(mulberry32(10),{female:false}),{z:.6,dir:'NW',arms:'hold2',hold:'jar'}));
+    s.pour([2.86,5.2,1.62],[2.73,5.03,1.2,.2],{v:[-.15,-.1,0],rate:30,when:(T)=>Math.sin(T*TAU/4)>0});
+    s.motes([1.3,2.6,.2,4.4,12,3.2],{rate:4});
     s.person(1.3,3.1,soldier({z:.6,dir:'SE',hold:'staff',arms:'spear',id:101,then:(r)=>{}}));
     s.at(1.3,3.1,()=>{const t=s.P(1.3,3.1,.6+3.2);const h=s.P(1.3,3.1,.6);shape([[t[0]-6*Q,t[1]],[t[0]+6*Q,t[1]-3*Q],[t[0]+3*Q,t[1]+5*Q],[t[0]-3*Q,t[1]+5*Q]],COL.gold,{lw:.5});shape([[t[0]-5*Q,t[1]+8*Q],[t[0]+5*Q,t[1]+6*Q],[t[0]+5*Q,t[1]+20*Q],[t[0]-5*Q,t[1]+22*Q]],M(.05,.7,0,.3),{lw:.5});},.5);
     // Jesus below, bound and crowned, with guards
@@ -1747,19 +1981,21 @@ const P11={no:'11',title:'The Road to Golgotha',quote:'Daughters of Jerusalem, d
     s.horse(6.2,4.6,{z:1.2,dir:'SE',blanket:M(0,.6,0,.3)});
     s.person(6.18,4.62,soldier({z:1.2+.85,pose:'sit',dir:'SE',arms:'forward',officer:true,hold:null,shadow:false,bias:.05,id:1101}));
     s.person(6.9,6.7,soldier({z:1.2,dir:'NE',id:1102}));s.person(5.2,7,soldier({z:1.2,dir:'NE',id:1103,hold:'shield',arms:'down'}));
-    s.person(6.15,14,P_(JESUS,{z:.6,dir:'SW',arms:'carry',crown:true,lean:.1,tilt:.15,front:(L,sc)=>crossOnShoulder(L,sc,true)}));
-    s.person(7.2,13.1,soldier({z:.6,dir:'NW',arms:'point',hold:null,id:1104}));s.person(7.1,15.4,soldier({z:.6,dir:'NE',id:1105}));
+    const PR=(d)=>({go:[0,1.3,.13,d],stride:4});
+    s.person(6.15,14,P_(JESUS,{z:.6,dir:'SW',arms:'carry',crown:true,lean:.1,tilt:.15,front:(L,sc)=>crossOnShoulder(L,sc,true),anim:Object.assign(PR(1),{noArms:true})}));
+    s.person(7.2,13.1,soldier({z:.6,dir:'SW',arms:'point',hold:null,id:1104,anim:PR(1)}));s.person(7.1,15.2,soldier({z:.6,dir:'SW',id:1105,anim:PR(1)}));
     // the women who weep for him, and one who offers a cloth
     s.person(4.35,14.6,P_(MARY,{z:.6,dir:'SE',arms:'cover',id:1106}));
     s.person(4.3,13.4,Object.assign(crowdPerson(r0,{female:true}),{z:.6,dir:'SE',arms:'cover'}));
     s.person(4.5,15.8,Object.assign(crowdPerson(r0,{child:true}),{z:.6,dir:'SE',arms:'chest'}));
     s.person(5.05,12.3,P_(JOANNA,{z:.6,dir:'SE',arms:'hold',hold:'towel'}));
     // the two others, with their beams
-    s.person(5.3,20.3,{dir:'NE',arms:'carry',robe:M(.2,.1,0,.3),hair:COL.hairBlack,beard:'short',front:(L,sc)=>crossOnShoulder(L,sc,false),id:1107});
-    s.person(6.7,21.5,{dir:'NE',arms:'carry',robe:M(.3,0,.2,.1),hair:COL.hairBrown,beard:'full',front:(L,sc)=>crossOnShoulder(L,sc,false),id:1108});
-    s.person(6.1,23,soldier({dir:'NE',id:1109}));s.person(4.8,22.4,soldier({dir:'NE',id:1110}));
+    s.person(5.3,20.3,{anim:{go:[0,.9,.12,1.5],stride:4,noArms:true},dir:'SW',arms:'carry',robe:M(.2,.1,0,.3),hair:COL.hairBlack,beard:'short',front:(L,sc)=>crossOnShoulder(L,sc,false),id:1107});
+    s.person(6.7,21.5,{anim:{go:[0,.9,.12,1.8],stride:4,noArms:true},dir:'SW',arms:'carry',robe:M(.3,0,.2,.1),hair:COL.hairBrown,beard:'full',front:(L,sc)=>crossOnShoulder(L,sc,false),id:1108});
+    s.person(6.1,23.4,soldier({dir:'SW',id:1109,anim:{go:[0,.9,.12,1.5]}}));s.person(4.8,22.6,soldier({dir:'SW',id:1110,anim:{go:[0,.9,.12,1.8]}}));
     for(const [x,y,dir,arms] of [[5.4,24.6,'NE','down'],[6.6,25.3,'NE','fold'],[5.8,26.4,'NE','down'],[7.2,26.8,'NW','point'],[4.6,26,'NE','chest'],[6.4,27.6,'NE','down'],[3.9,21.4,'SE','cover'],[8.1,20.2,'SW','point'],[3.8,17,'SE','down'],[8.2,16.6,'NW','fold'],[8.1,11,'SW','raise1'],[3.8,9.9,'SE','chest'],[8,6.2,'SW','down'],[3.9,5.4,'SE','cover']]){
       const z=y<8.3?1.2:y<17.8?.6:0;s.person(x,y,Object.assign(crowdPerson(r0),{z,dir,arms}));}
+    s.kickDust([[6.15,15.2,.6],[5.3,21,0],[6.7,22.2,0],[6.1,24,0]],{rate:4});
     // dust rising from the road
     s.anim((T)=>{for(let i=0;i<14;i++){const ph=(T*.12+i*.071)%1;const y=18.6+((i*3.7)%9);const x=4.6+((i*1.9)%3);const p=s.P(x,y,ph*1.3);glaze(ellipsePts(p[0]+Math.sin(T+i)*6*Q,p[1],(3+ph*6)*Q,(2+ph*3)*Q,8),M(0,.06,0,.14*(1-ph)),{raw:true});}});
     s.flock(3,{side:'L',z:3.6,speed:.02});
@@ -1781,7 +2017,7 @@ const P12={no:'12',title:'Simon of Cyrene',quote:'They laid the cross on him, to
     s.floorDeco(()=>{shape(s.fp([[6.4,0],[8.8,0],[8.4,4],[5,10],[2.4,10],[5.6,4.4]]),M(.02,.14,0,.36),{lw:.8});},3);
     // a field of barley behind a low wall
     s.floorDeco(()=>{shape(s.fp([[0,0],[4.2,0],[4.2,5.2],[0,5.2]]),M(.04,.08,0,.4),{lw:.7});for(let i=.3;i<4.2;i+=.3)line(s.fp([[i,.1],[i,5.1]],.01),{w:.6,alpha:.6,ink:'r'});},4);
-    s.at(2,2.6,()=>{for(let i=0;i<260;i++){const x=.15+((i*37)%41)/10,y=.15+((i*53)%51)/10;const p=s.P(x,y,0);const lean=((i*7)%5-2)*.6*Q;line([[p[0],p[1]],[p[0]+lean,p[1]-9*Q]],{w:.6,alpha:.85,breaks:false,ink:'r'});shape(ellipsePts(p[0]+lean,p[1]-10*Q,1.1*Q,2.4*Q,8),M(.08,.3,0,.85),{lw:.3});}},-2);
+    s.grain(0,0,4.2,5.2,{depth:-1.5});
     s.box(0,5.2,0,4.4,.3,.5,COL.stoneMid,{lw:.7});s.box(4.2,0,0,.3,5.2,.5,COL.stoneMid,{lw:.7});
     s.olive(1.4,7.6,1.6,{});s.olive(6,9.3,1.3,{});
     // a cart by the wall
@@ -1794,7 +2030,7 @@ const P12={no:'12',title:'Simon of Cyrene',quote:'They laid the cross on him, to
     // his sons, Alexander and Rufus, watch from the field wall
     s.person(3.7,6.3,{child:true,dir:'SE',arms:'chest',robe:M(.05,0,.4,.2),skin:M(.36,.36,0,.44),hair:COL.hairBlack,beard:'none',id:1204});
     s.person(3.1,6.9,{child:true,h:.55,dir:'SE',arms:'down',robe:M(.05,.3,0,.3),skin:M(.36,.36,0,.44),hair:COL.hairBlack,beard:'none',id:1205});
-    s.person(8.4,8.3,Object.assign(crowdPerson(mulberry32(12),{female:true}),{dir:'NW',arms:'hold',hold:'jar'}));
+    s.walker(8.9,9.4,8.9,6.8,.24,Object.assign(crowdPerson(mulberry32(12),{female:true}),{id:1206,arms:'hold',hold:'jar'}));
     s.flock(2,{side:'L',z:3.4,speed:.025});
   }
 };
@@ -1827,6 +2063,8 @@ const P13={no:'13',title:'Golgotha',quote:'They came to the place called The Sku
     s.floorDeco(()=>{const c=s.P(8.9,7.6,0);shape([[c[0]-16*Q,c[1]],[c[0]+10*Q,c[1]-8*Q],[c[0]+20*Q,c[1]+2*Q],[c[0]-4*Q,c[1]+10*Q]],COL.jesusMantle,{lw:.6});for(const [dx,dy] of [[-3,1],[4,-1]]){shape([[c[0]+dx*Q-2*Q,c[1]+dy*Q-2*Q],[c[0]+dx*Q+2*Q,c[1]+dy*Q-2*Q],[c[0]+dx*Q+2*Q,c[1]+dy*Q+2*Q],[c[0]+dx*Q-2*Q,c[1]+dy*Q+2*Q]],COL.paper,{lw:.4});}},8);
     s.person(8.2,7.1,soldier({pose:'ground',dir:'SE',arms:'forward',hold:null,id:1301}));s.person(9.6,7.2,soldier({pose:'ground',dir:'SW',arms:'forward',hold:null,crest:false,id:1302}));s.person(8.9,8.4,soldier({pose:'kneel',dir:'NE',arms:'forward',hold:null,id:1303}));
     s.person(7.3,8.9,soldier({dir:'NW',officer:true,hold:null,arms:'down',tilt:-.35,id:1304}));
+    s.tosser({seed:13,from:[8.9,8.1,.8],v:[.05,-.9,1.5],every:3,n:2,bounce:.35,dust:true,
+      draw:(q,p)=>{const r=1.9*Q,a=q.a||0;const pts=[0,1,2,3].map(i=>[p[0]+Math.cos(a+i*Math.PI/2)*r,p[1]-r+Math.sin(a+i*Math.PI/2)*r*.6]);shape(pts,COL.cream,{lw:.4});if(q.rest)dot(p[0],p[1]-r,.6*Q,COL.shadow,{line:false});}});
     // those who loved him
     s.person(1.2,4.6,P_(MARY,{dir:'SE',arms:'cover'}));s.person(1.5,5.5,P_(APOSTLES.john,{dir:'SE',arms:'chest'}));s.person(2.2,7.9,P_(MAGDALENE,{pose:'kneel',dir:'NE',arms:'pray',tilt:-.2}));
     s.person(10.7,10.4,P_(SALOME,{dir:'NW',arms:'chest'}));s.person(11.2,9.6,P_(JOANNA,{dir:'NW',arms:'cover'}));
@@ -1844,6 +2082,7 @@ const P14={no:'14',title:'The Crucifixion',quote:'Father, forgive them, for they
     s.sky([{z0:0,z1:.8,mix:M(.28,.06,0,.14)},{z0:.8,z1:1.7,mix:M(.46,.02,0,.06)},{z0:1.7,z1:2.8,mix:M(.62,0,0,0)},{z0:2.8,z1:5,mix:M(.8,0,0,0)}]);
     s.moon('L',6.6,3.6,.42,{mix:M(.78,0,0,0),halo:[1.45,1.2],haloMix:[M(.52,0,0,.02),M(.25,0,0,.12)],rawHalo:false,craters:false,sun:true});
     s.ridge('R',[[0,.6],[5,.9],[10,.7]],M(.5,0,0,.05));
+    s.driftClouds('L',[[1,3.2,.45],[5,2.6,.35,.7]],{speed:.07,mix:M(.35,0,0,0)});s.driftClouds('R',[[2,3.4,.5],[7,2.8,.3,1.3]],{speed:.06,mix:M(.35,0,0,0)});
     s.hill(5,4.7,3.4,3,2,.35,M(.1,.1,0,.26),{side:M(.2,.12,0,.3)});
     s.pebbles(24,{});
     const bj=s.cross(5,4.6,3.6,{w:.22,arm:1.1});
@@ -1882,6 +2121,12 @@ const P15={no:'15',title:'The Darkness',quote:'Darkness came over the whole land
     s.floorDeco(()=>{const cr=[[[3,6],[4.2,6.8],[4.6,8],[6,8.6],[6.4,10]],[[8,5],[7.4,6.2],[8.2,7.4]],[[1.2,4.8],[2.4,5.2]]];for(const c of cr){const pts=s.fp(c);line(pts,{w:1.4});line(pts.map(p=>[p[0]+1.5*Q,p[1]+1*Q]),{w:.5,alpha:.6});}},8);
     s.box(5.2,6.2,0,2.4,.45,.45,COL.stone,{lw:.8,after:()=>{const c=s.P(7.6,6.42,.22);shape(ellipsePts(c[0],c[1],.28*s.Uq,.28*s.Uq,12),COL.stoneMid,{lw:.6});}});
     s.rock(8.6,6.6,.5,{});s.rock(8.9,7,.35,{});
+    const quake=(T)=>{const c=T%9;return c<1.6?Math.sin(Math.PI*c/1.6):0;};
+    s.shake=(T)=>{const q=quake(T);return q?[Math.sin(T*47)*3*q,Math.cos(T*53)*1.6*q]:[0,0];};
+    s.physics({seed:15,rate:(T)=>quake(T)*14,g:-9.8,drag:.1,bounce:.35,fric:.5,life:6,restLife:3,
+      spawn:(r)=>{const e=r()<.6;return e?{x:1.2+r()*2.8,y:1+r()*.2,z:3.3,vx:(r()-.5)*.6,vy:-.2+r()*.6,vz:r()}:{x:4.1,y:1.4+r()*1.6,z:3.6,vx:.3+r()*.5,vy:(r()-.5)*.4,vz:r()*.6};},
+      hit:(q,sys)=>{if(!q.bounces)sys.fx.push(dustFx(q.x,q.y,q.z,.5));},
+      draw:(q,p)=>shape(blobPts(p[0],p[1]-1.2*Q,1.8*Q,1.3*Q,6,.3),COL.stoneMid,{lw:.35})});
     // a few people, still
     s.person(3.8,8.4,Object.assign(crowdPerson(mulberry32(15),{female:true}),{pose:'kneel',dir:'NW',arms:'pray',tilt:-.3}));
     s.person(4.3,9.1,Object.assign(crowdPerson(mulberry32(16),{child:true}),{dir:'NW',arms:'chest'}));
@@ -1905,16 +2150,17 @@ const P16={no:'16',title:'The Burial',quote:'He wrapped it in clean linen and la
     s.torchStand(7.3,2.6,1.7,{r:3});
     s.litFloor(7.4,4.6,[3.6,2.6,1.6],g,{k:.6,warm:.5});
     // Joseph of Arimathea and Nicodemus carry him to the door
-    s.person(7.3,3.75,{dir:'SW',arms:'lift',robe:M(.45,0,.3,.1),mantle:M(.05,.05,0,.5),headcover:M(.02,.04,0,.12),hair:COL.hairGrey,beard:'long',beardMix:COL.hairGrey,id:1601});
-    s.shroud(7.32,4.15,7.36,5.7,1.0,{w:.24,bias:.3});
-    s.person(7.4,6.1,{dir:'NE',arms:'lift',robe:M(.2,.1,0,.45),mantle:M(.35,0,.2,.1),headcover:M(.3,0,.3,.1),hair:COL.hairGrey,beard:'full',beardMix:COL.hairGrey,id:1602,bias:.6});
+    const BR={go:[-.55,0,.12,1.5],noArms:true,stride:4};
+    s.person(7.3,3.75,{anim:BR,dir:'SW',arms:'lift',robe:M(.45,0,.3,.1),mantle:M(.05,.05,0,.5),headcover:M(.02,.04,0,.12),hair:COL.hairGrey,beard:'long',beardMix:COL.hairGrey,id:1601});
+    s.shroud(7.32,4.15,7.36,5.7,1.0,{w:.24,bias:.3,go:BR.go});
+    s.person(7.4,6.1,{anim:BR,dir:'NE',arms:'lift',robe:M(.2,.1,0,.45),mantle:M(.35,0,.2,.1),headcover:M(.3,0,.3,.1),hair:COL.hairGrey,beard:'full',beardMix:COL.hairGrey,id:1602,bias:.6});
     for(const [x,y] of [[6.7,3.3],[7,3.7],[6.5,3.8]])s.vessel(x,y,0,.5,'amphora',M(.04,.12,0,.24));
     // the women watch where he is laid
     s.person(9.4,4.3,P_(MAGDALENE,{dir:'SW',arms:'chest'}));
     s.person(10.1,5.1,P_(MARY,{dir:'SW',arms:'hold',hold:'lamp'}));
     s.person(9.7,6.2,P_(SALOME,{dir:'SW',arms:'cover'}));
     // guards come up the path
-    s.person(11,1.8,soldier({dir:'SW',id:1603,walk:true}));s.person(11.5,2.8,soldier({dir:'SW',id:1604,hold:'torch',arms:'torch',walk:true,phase:2}));
+    s.person(11.2,1.6,soldier({dir:'NW',id:1603,anim:{go:[-1.2,.6,.25,.5]}}));s.person(11.6,2.6,soldier({dir:'NW',id:1604,hold:'torch',arms:'torch',anim:{go:[-1.2,.6,.25,.9]}}));
     s.olive(3.4,10.9,1.6,{});s.olive(11.4,4.2,1.3,{});s.cypress(9.6,.9,3.2,{});s.cypress(11.1,1.1,2.6,{});
     s.flowers(30,[6.5,8.5,11.5,11.5],[M(0,.7,0,.3),M(0,0,0,.7),M(.05,0,0,.02)]);
   }
@@ -1933,7 +2179,8 @@ const P17={no:'17',title:'The Sealed Tomb',quote:'They made the tomb secure by s
     const T=gardenTomb(s,{ox:.4,oy:.6});
     s.stoneDisc(T.doorX+.33,T.doorY,0,.95,{th:.33,seal:true});
     // the watch
-    s.person(7,3.5,soldier({dir:'SW',id:1701}));
+    s.walker(7.1,2.6,7.1,4.6,.18,soldier({id:1701}));
+    s.driftClouds('R',[[3,3.4,.4],[8,3.8,.3,1.4]],{speed:.09,mix:M(.62,0,.08,0),twinkle:26});s.driftClouds('L',[[2,3.6,.45]],{speed:.05,mix:M(.62,0,.08,0),twinkle:20});
     s.person(7.2,6.8,soldier({dir:'SW',id:1702,hold:'shield',arms:'down'}));
     s.fire(9,4.8,{embers:true,s:.8,r:1.8,k:.5});
     s.person(9.5,5.6,soldier({pose:'ground',dir:'NW',arms:'warm',hold:null,crest:false,id:1703}));
@@ -1960,9 +2207,10 @@ const P18={no:'18',title:'The Women at Dawn',quote:'Who will roll away the stone
     s.prism([[.3,.3],[3.4,.3],[3.6,1.4],[3.2,3.2],[.3,3.3]],0,2.2,M(.16,.06,0,.3),{lw:.9,after:()=>{shape(s.vcircX(3.32,1.9,.6,.5,20),M(.9,0,0,.1),{lw:.8});}});
     s.stoneDisc(3.62,1.9,0,.62,{th:.25,seal:true});
     // three women with spices
-    s.person(6.4,6.6,P_(MAGDALENE,{dir:'NW',walk:true,phase:1,arms:'hold2',hold:'spice'}));
-    s.person(7.3,7.1,P_(SALOME,{dir:'NW',walk:true,phase:2.4,arms:'hold',hold:'jar'}));
-    s.person(7.6,8.4,P_(JOANNA,{dir:'SW',arms:'hold',hold:'lamp',tilt:-.1}));
+    const WK=(d)=>({go:[-2,-2.2,.2,d],noArms:true});
+    s.person(6.9,7.1,P_(MAGDALENE,{dir:'NW',arms:'hold2',hold:'spice',anim:WK(1)}));
+    s.person(7.7,7.5,P_(SALOME,{dir:'NW',arms:'hold',hold:'jar',anim:WK(1.3)}));
+    s.person(8.1,8.6,P_(JOANNA,{dir:'NW',arms:'hold',hold:'lamp',tilt:-.1,anim:WK(1.6)}));
     // trees; and far off among them, someone standing
     s.olive(4,8.6,1.7,{});s.olive(1.6,6.6,1.5,{});s.olive(9.8,5,1.6,{});s.cypress(8.6,1.4,3.2,{});s.cypress(11,2.2,2.8,{});s.palm(6,2.4,3,{});
     s.person(9.8,1.2,P_(JESUS,{dir:'SW',arms:'down',h:.98}));
@@ -1989,12 +2237,15 @@ const P19={no:'19',title:'The Empty Tomb',quote:'He is not here, for he has rise
     // the grave cloths, lying where he lay; the face cloth folded apart
     s.shroud(1.8,2.95,4.3,3.05,T.benchZ,{w:.16,mix:COL.linen,bias:.2});
     s.box(4.35,2.7,T.benchZ,.36,.3,.1,COL.linen,{lw:.6,bias:.3});
-    s.stoneDisc(T.doorX+.33,8,0,.95,{th:.33});
+    s.rollingStone(T.doorX+.33,T.doorY,8,0,.95,{th:.33,delay:1.4});
+    s.motes([1.6,3.2,.3,4.3,6,2],{rate:3});
     s.at(T.doorX+.3,T.doorY,()=>{const c=s.P(T.doorX+.02,T.doorY,T.doorZ);shape(ellipsePts(c[0],c[1],.35*s.Uq,.5*s.Uq,14),M(0,0,0,.4),{raw:true,line:false});},-.5);
     // the guards fled: a helmet and a spear on the grass
     s.floorDeco(()=>{line([s.P(7.4,3.2,0),s.P(9.6,4.2,0)],{w:1.2});const h=s.P(8.2,4.6,0);shape([[h[0]-6*Q,h[1]],[h[0]-5*Q,h[1]-6*Q],[h[0]+3*Q,h[1]-7*Q],[h[0]+7*Q,h[1]-1*Q]],COL.bronze,{lw:.5});},8);
     // Mary Magdalene weeps outside
-    s.person(7.4,6.4,P_(MAGDALENE,{dir:'SE',arms:'cover',tilt:.2}));
+    s.person(8.6,4.4,P_(MAGDALENE,{dir:'SW',arms:'cover',tilt:.2}));
+    s.person(11.2,10.6,P_(APOSTLES.john,{dir:'NW',lean:-.1,anim:{go:[-3.2,-3,.95,4.5],stride:11}}));
+    s.person(11.6,11.2,P_(APOSTLES.peter,{dir:'NW',lean:-.1,anim:{go:[-3.2,-3.1,.8,5],stride:10}}));
     s.olive(2.8,10.8,1.6,{fruit:true});s.olive(11.2,3.4,1.3,{});s.cypress(9.6,1.2,2.6,{});
     s.flowers(50,[6.4,7.6,11.6,11.6],[M(0,.7,0,.3),M(0,0,0,.7),M(.02,0,0,.02)]);
     s.flock(3,{side:'R',z:3.4,speed:.03});
@@ -2029,7 +2280,8 @@ const P20={no:'20',title:'The Garden',quote:'Jesus said to her, “Mary.” She 
     s.anim((T)=>{for(let i=0;i<2;i++){const ph=(T*.3+i*.5)%1;const p=s.P(pc[0]+(i?.3:-.25),pc[1]+(i?-.2:.2),.01);line(ellipsePts(p[0],p[1],(4+ph*18)*Q,(2+ph*9)*Q,20).concat([ellipsePts(p[0],p[1],(4+ph*18)*Q,(2+ph*9)*Q,20)[0]]),{w:.5,ink:'t',alpha:.7*(1-ph),breaks:false});}});
     // the risen Lord, and Mary, who knows his voice
     s.person(6.85,5.35,P_(JESUS,{dir:'SW',arms:'bless'}));
-    s.person(5.55,6.15,P_(MAGDALENE,{pose:'kneel',dir:'SE',arms:'reach',tilt:-.15}));
+    s.person(5.55,6.15,P_(MAGDALENE,{pose:'kneel',dir:'SE',arms:'reach',tilt:-.15,anim:{arms:['cover','reach'],period:6,tilt:[.1,-.2]}}));
+    s.leaves([[2.6,2.4,3],[9.8,2.3,2.8],[2.8,9.4,1.2],[4.2,8.2,1]],{rate:1,size:1.8,mixes:[M(0,.7,0,.2),M(0,.4,0,.1),M(0,0,0,.7)],rawMix:true,seed:71,breeze:[.3,.3]});
     s.flock(4,{side:'L',z:3.3,speed:.035});
     s.anim((T)=>{for(let i=0;i<3;i++){const a=T*.6+i*2;const p=s.P(3+i*2.5+Math.cos(a)*.6,3+i*.8+Math.sin(a*1.3)*.5,.8+Math.sin(a*2)*.25);const f=Math.abs(Math.sin(T*12+i))*3*Q;shape([[p[0],p[1]],[p[0]-3*Q,p[1]-f],[p[0]-3.5*Q,p[1]+1*Q]],M(0,.6,0,.5),{raw:true,lw:.3});shape([[p[0],p[1]],[p[0]+3*Q,p[1]-f],[p[0]+3.5*Q,p[1]+1*Q]],M(0,.6,0,.5),{raw:true,lw:.3});}});
   }
@@ -2068,10 +2320,11 @@ const P21={no:'21',title:'The Final Dawn',quote:'Very early on the first day of 
     for(const [x,y,d] of [[14.6,5.4,'SE'],[15.4,6,'SW'],[14.2,6.6,'SE'],[15.8,5.1,'SE'],[13.6,5.8,'SW']])s.sheep(x,y,{dir:d});
     s.person(16.6,6.2,{dir:'SW',arms:'spear',hold:'staff',robe:M(.08,0,.1,.5),headcover:M(.3,0,.3,.1),hair:COL.hairBlack,beard:'full',id:2101});
     // three on the road: one of them is him
-    s.person(17.4,8.8,P_(APOSTLES.thomas,{dir:'SE',walk:true,phase:1.3,robe:M(.2,.2,0,.4),mantle:null,id:2102}));
-    s.person(17.9,9.3,P_(JESUS,{dir:'SE',walk:true,phase:2.6,arms:'open'}));
-    s.person(17.1,9.7,{dir:'SE',walk:true,phase:.2,robe:M(.1,0,.4,.2),mantle:M(.3,0,0,.4),hair:COL.hairBrown,beard:'full',arms:'forward',id:2103});
+    s.person(17.4,8.8,P_(APOSTLES.thomas,{dir:'SE',anim:{go:[2.6,1.1,.16,1]},robe:M(.2,.2,0,.4),mantle:null,id:2102}));
+    s.person(17.9,9.3,P_(JESUS,{dir:'SE',arms:'open',anim:{go:[2.6,1.1,.16,1]}}));
+    s.person(17.1,9.7,{dir:'SE',anim:{go:[2.6,1.1,.16,1]},robe:M(.1,0,.4,.2),mantle:M(.3,0,0,.4),hair:COL.hairBrown,beard:'full',arms:'forward',id:2103});
     s.flowers(80,[2,8,12,11.8],[M(0,.75,0,.3),M(0,0,0,.75)]);
+    s.driftClouds('R',[[5,3.5,.6],[14,3.8,.5,.8],[22,3.3,.55,1.2]],{speed:.12,mix:M(0,.2,0,.3),raw:true});
     s.flock(6,{side:'R',z:3.5,speed:.02,size:3.6});
   }
 };
@@ -2105,7 +2358,6 @@ if(typeof P07!=='undefined')Object.assign(BUILT,{'07':P07,'08':P08,'09':P09,'10'
 if(typeof P11!=='undefined')Object.assign(BUILT,{'11':P11,'12':P12,'13':P13,'14':P14,'15':P15});
 if(typeof P16!=='undefined')Object.assign(BUILT,{'16':P16,'17':P17,'18':P18,'19':P19,'20':P20,'21':P21});
 const PLATES=META.map(m=>{const b=BUILT[m[0]];if(b)return b;return{no:m[0],title:m[1],quote:m[2],ref:m[3],gx:m[4],gy:m[5],w:m[6],d:m[7],wallH:4.2,build:placeholder};});
-
 // ---------------------------------------------------------------------
 // 10. The sheet: layout of plates, margins, printing, camera, input
 // ---------------------------------------------------------------------
@@ -2125,130 +2377,176 @@ const SCENES=PLATES.map((p,i)=>new Scene(Object.assign({index:i,seed:strSeed(p.t
 const cv=document.getElementById('sheet'),ctx=cv.getContext('2d');
 let VW=0,VH=0,DPRc=1;
 function resize(){DPRc=Math.min(window.devicePixelRatio||1,2.5);VW=Math.round(innerWidth*DPRc);VH=Math.round(innerHeight*DPRc);cv.width=VW;cv.height=VH;}
-resize();addEventListener('resize',()=>{resize();if(cam.mode==='overview'||tour.state==='intro')cam.z=Math.max(cam.z,fitAllZ()*0.8);});
+resize();addEventListener('resize',()=>{resize();if(tour.state==='intro')cam.z=fitAllZ()*.92;});
 
 buildInkPatterns(ctx);buildInkPatterns(ctx,true);buildPaper(ctx);
 
-// ---- printing plates (progressively, one per frame) ---------------------
+// ---- printing plates (progressively, a few per frame) ---------------------
 let printed=0;const T0=performance.now();
 function printNext(){
   if(printed>=SCENES.length)return false;
   const s=SCENES[printed];
-  const c=makeCanvas(s.cw,s.ch),g=c.getContext('2d');
   setPaperFor(s.bx,s.by,Q);
-  seed(s.seed);s.items=[];s.dyn=[];s.lights=[];
-  try{s.build(s);s.render(g);}catch(e){console.error('plate',s.no,e);}
-  s.off=OFF;s.img=c;
-  // a half-size copy for the overview (keeps the dots as texture, not moiré)
-  const h=makeCanvas(s.cw/2,s.ch/2),hg=h.getContext('2d');hg.imageSmoothingQuality='high';hg.drawImage(c,0,0,h.width,h.height);s.lo=h;
+  seed(s.seed);s.items=[];s.dyn=[];s.lights=[];s.terraces=[];
+  let flat;
+  try{s.build(s);flat=s.render();}catch(e){console.error('plate',s.no,e);flat=makeCanvas(s.cw,s.ch);s.layers=[{img:flat,x:0,y:0,w:s.cw,h:s.ch}];}
+  s.off=OFF;s.img=s.layers[0].img;
+  // half- and quarter-size pulls of the flattened plate for the overview (dots read as texture, not moiré)
+  const h=makeCanvas(s.cw/2,s.ch/2),hg=h.getContext('2d');hg.imageSmoothingQuality='high';hg.drawImage(flat,0,0,h.width,h.height);s.lo=h;
   const q=makeCanvas(s.cw/4,s.ch/4),qg=q.getContext('2d');qg.imageSmoothingQuality='high';qg.drawImage(h,0,0,q.width,q.height);s.lo2=q;
   s.printedAt=performance.now();printed++;
   return true;
 }
 
 // ---- world helpers -----------------------------------------------------
-function sceneCenter(s){const a=s.W(s.w/2,s.d/2,s.wallH*.42);return a;}
+function sceneCenter(s){return s.W(s.w/2,s.d/2,s.wallH*.42);}
 function sceneSize(s){return[(s.w+s.d)*C30*U,((s.w+s.d)*S30+s.wallH*.95+s.slab)*U];}
 function sceneOutline(s){const h=s.wallH;return[s.W(0,s.d,h),s.W(0,0,h),s.W(s.w,0,h),s.W(s.w,0,-s.slab),s.W(s.w,s.d,-s.slab),s.W(0,s.d,-s.slab)];}
 function inPoly(p,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>p[1])!==(b[1]>p[1]))&&(p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0]))c=!c;}return c;}
 function sceneAt(wx,wy){for(let i=SCENES.length-1;i>=0;i--){if(inPoly([wx,wy],sceneOutline(SCENES[i])))return SCENES[i];}return null;}
 function fitAllZ(){return Math.min(VW/SHEET.w,VH/SHEET.h)*0.97;}
-function fitSceneZ(s){const [w,h]=sceneSize(s);const small=innerWidth<640;const padB=small?innerHeight*.30:(innerHeight<700?110:80);const avW=VW*(small?.96:.84),avH=(VH-padB*DPRc)*(small?.9:.86);return Math.min(avW/w,avH/h);}
-function sceneView(s){const c=sceneCenter(s);const z=fitSceneZ(s);const small=innerWidth<640;const shiftY=(small?innerHeight*.14:30)*DPRc/z;return{x:c[0],y:c[1]+shiftY,z};}
+function small(){return innerWidth<640;}
+function fitSceneZ(s){const [w,h]=sceneSize(s);const padB=small()?innerHeight*.30:(innerHeight<700?110:80);const side=small()?44:130;const avW=(VW-2*side*DPRc)*(small()?.98:.9),avH=(VH-padB*DPRc)*(small()?.86:.84);return Math.min(avW/w,avH/h);}
+function sceneView(s){const c=sceneCenter(s);const z=fitSceneZ(s);const shiftY=(small()?innerHeight*.14:30)*DPRc/z;return{x:c[0],y:c[1]+shiftY,z};}
+function nearestPlate(){const ws=[cam.x,cam.y];const hit=sceneAt(ws[0],ws[1]);if(hit)return hit;let best=null,bd=1e18;for(const s of SCENES){const c=sceneCenter(s);const d=Math.hypot(c[0]-cam.x,c[1]-cam.y);if(d<bd){bd=d;best=s;}}return best;}
 
 // ---- camera ------------------------------------------------------------
-const cam={x:0,y:0,z:0.2,mode:'tour',vx:0,vy:0};
-const tour={state:'intro',idx:-1,t0:0,from:null,to:null,dur:0,active:true,finalAt:0,holdStart:0};
+// states: intro (before Start) · travel · hold (settled on a plate) · free (the viewer is driving) · outro · final
+const cam={x:0,y:0,z:0.2,vx:0,vy:0};
+const tour={state:'intro',idx:-1,t0:0,from:null,to:null,dur:0,auto:false,finalAt:0,holdStart:0,locked:-1};
 cam.x=SHEET.w/2;cam.y=SHEET.h/2;cam.z=fitAllZ()*.92;
 const HOLD=[9,9,9,12,10,12,10,9,10,10,11,9,10,13,11,10,10,10,12,13,13];
-function travelTo(v,dur,then){tour.from={x:cam.x,y:cam.y,z:cam.z};tour.to=v;tour.t0=now;tour.dur=dur;tour.then=then;tour.moving=true;}
-function travelDur(v){const d=Math.hypot(v.x-cam.x,v.y-cam.y);const zr=Math.abs(Math.log(v.z/cam.z));return clamp(2.6+d/1600+zr*.9,3,7.5);}
-function goScene(i,auto){
-  i=clamp(i,0,SCENES.length-1);tour.idx=i;const v=sceneView(SCENES[i]);
-  tour.state='travel';setCard(i);travelTo(v,travelDur(v),()=>{tour.state='hold';tour.holdStart=now;tour.base={x:cam.x,y:cam.y,z:cam.z};onArrive(i);});
-  hideFinal();
-}
-function startOutro(){tour.state='outro';setCard(-2);const v={x:SHEET.w/2,y:SHEET.h/2,z:fitAllZ()};travelTo(v,12,()=>{tour.state='final';tour.finalAt=now;tour.active=false;updPlay();});}
 let now=0;
+function travelTo(v,dur,then){tour.from={x:cam.x,y:cam.y,z:cam.z};tour.to=v;tour.t0=now;tour.dur=dur;tour.then=then;tour.moving=true;}
+function travelDur(v){const d=Math.hypot(v.x-cam.x,v.y-cam.y);const zr=Math.abs(Math.log(v.z/cam.z));return clamp(2.2+d/1800+zr*.8,2.4,6);}
+function goScene(i,dur){
+  i=clamp(i,0,SCENES.length-1);tour.idx=i;tour.locked=i;const v=sceneView(SCENES[i]);
+  tour.state='travel';setCard(i);hideFinal();updNav();
+  travelTo(v,dur||travelDur(v),()=>{tour.state='hold';tour.holdStart=now;tour.base={x:cam.x,y:cam.y,z:cam.z};onArrive(i);});
+}
+function startOutro(){tour.state='outro';tour.locked=-1;setCard(-2);updNav();const v={x:SHEET.w/2,y:SHEET.h/2,z:fitAllZ()};travelTo(v,10,()=>{tour.state='final';tour.finalAt=now;tour.auto=false;updPlay();updNav();});}
 function camStep(dt){
   if(tour.moving){
     const t=clamp((now-tour.t0)/(tour.dur*1000),0,1);const e=easeIO(t);const f=tour.from,to=tour.to;
     const d=Math.hypot(to.x-f.x,to.y-f.y);
-    const span=Math.max(VW/f.z,VW/to.z);const dip=Math.log(1+(d/span)*1.1)*.9+ (d>50?.12:0);
+    const span=Math.max(VW/f.z,VW/to.z);const dip=Math.log(1+(d/span)*1.1)*.9+(d>50?.12:0);
     const lz=lerp(Math.log(f.z),Math.log(to.z),e)-dip*Math.sin(Math.PI*e);
-    // slightly imperfect: the path bows a little, like a hand-held move across paper
+    // the path bows a little, like a hand-held move across paper
     const bow=Math.sin(Math.PI*e)*d*.035;const nx=-(to.y-f.y)/(d||1),ny=(to.x-f.x)/(d||1);
     cam.x=lerp(f.x,to.x,e)+nx*bow;cam.y=lerp(f.y,to.y,e)+ny*bow;cam.z=Math.exp(lz);
     if(t>=1){tour.moving=false;if(tour.then){const th=tour.then;tour.then=null;th();}}
   }else if(tour.state==='hold'&&tour.base){
     const ht=(now-tour.holdStart)/1000;const s=SCENES[tour.idx];const H=HOLD[tour.idx]||9;
-    const k=smooth(clamp(ht/H,0,1));
-    const drift=(tour.idx%2?1:-1)*30;
+    const k=smooth(clamp(ht/H,0,1));const drift=(tour.idx%2?1:-1)*30;
     let bx=tour.base.x,by=tour.base.y,bz=tour.base.z;
-    if(s.focus){ // settle on the whole plate, then lean in toward the moment that matters
-      const f=s.W(s.focus[0],s.focus[1],s.focus[2]||0);const k2=smooth(clamp((ht-H*.22)/(H*.55),0,1));const fz=s.fz||1.5;
-      const zz=bz*Math.pow(fz,k2);bx=lerp(bx,f[0],k2);by=lerp(by,f[1]+(innerWidth<640?innerHeight*.1*DPRc/zz:0),k2);bz=zz;}
-    cam.x=bx+drift*k/Math.sqrt(bz/tour.base.z)+(noise1(now/2600,3)-.5)*5/(bz/tour.base.z);cam.y=by-10*k+(noise1(now/2900,9)-.5)*4/(bz/tour.base.z);cam.z=bz*(1+.04*k);
-    if(tour.active&&ht>H){if(tour.idx<SCENES.length-1)goScene(tour.idx+1,true);else startOutro();}
-  }else if(cam.mode==='manual'&&!drag.on){
+    if(s.focus){ // drift a little toward the moment that matters, without zooming past the plate
+      const f=s.W(s.focus[0],s.focus[1],s.focus[2]||0);const k2=smooth(clamp((ht-H*.2)/(H*.6),0,1))*.18;bx=lerp(bx,f[0],k2);by=lerp(by,f[1],k2);}
+    cam.x=bx+drift*k*.5+(noise1(now/2600,3)-.5)*4;cam.y=by-6*k+(noise1(now/2900,9)-.5)*3;cam.z=bz*(1+.02*k);
+    if(tour.auto&&ht>H){if(tour.idx<SCENES.length-1)goScene(tour.idx+1);else startOutro();}
+  }else if(tour.state==='intro'){
+    const el=(now-T0)/1000;cam.z=fitAllZ()*(.9+.04*Math.sin(el*.12));cam.x=SHEET.w/2+Math.sin(el*.09)*SHEET.w*.012;cam.y=SHEET.h/2+Math.cos(el*.07)*SHEET.h*.01;
+  }else if(!drag.on){
     cam.x+=cam.vx*dt;cam.y+=cam.vy*dt;cam.vx*=Math.pow(.02,dt);cam.vy*=Math.pow(.02,dt);
   }
-  // keep the sheet in reach
   const zmin=fitAllZ()*.6,zmax=Math.max(4.5*DPRc,fitAllZ()*30);cam.z=clamp(cam.z,zmin,zmax);
   cam.x=clamp(cam.x,-SHEET.w*.1,SHEET.w*1.1);cam.y=clamp(cam.y,-SHEET.h*.1,SHEET.h*1.1);
 }
 
+// ---- start ---------------------------------------------------------------
+const $=id=>document.getElementById(id);
+let started=false;
+function unveil(){if(started)return;started=true;$('start').classList.add('gone');$('hint').style.opacity=1;setTimeout(()=>hint(0),9000);}
+function begin(i=0){unveil();goScene(i,4.5);}
+// the overview: the whole sheet seen from above; arrows move a selection, Enter pans slowly into it
+function overview(sel){const wasIntro=tour.state==='intro';unveil();takeControl();tour.locked=-1;tour.sel=clamp(sel??(tour.idx>=0?tour.idx:0),0,SCENES.length-1);hideFinal();
+  travelTo({x:SHEET.w/2,y:SHEET.h/2,z:fitAllZ()},wasIntro?.8:2.6,()=>{tour.state='overview';});tour.state='overview-in';setCard(tour.sel,true);updNav();}
+function selectDir(dx,dy){const c=sceneCenter(SCENES[tour.sel]);let best=null,bs=1e18;
+  for(const s of SCENES){if(s.index===tour.sel)continue;const p=sceneCenter(s);const vx=p[0]-c[0],vy=p[1]-c[1];const along=vx*dx+vy*dy;if(along<=40)continue;const perp=Math.abs(vx*dy-vy*dx);const sc=along+perp*2.2;if(sc<bs){bs=sc;best=s;}}
+  if(best){tour.sel=best.index;setCard(tour.sel,true);updNav();}}
+function inOverview(){return tour.state==='overview'||tour.state==='overview-in'||tour.state==='intro';}
+$('bStart').onclick=()=>begin(0);
+tour.sel=0;
+
 // ---- input -------------------------------------------------------------
-const drag={on:false,x:0,y:0,sx:0,sy:0,t:0,moved:0,pts:new Map(),pinch:0,lastT:0};
+const drag={on:false,x:0,y:0,t:0,moved:0,pts:new Map(),pinch:0,lastT:0};
 function toWorld(px,py){return[(px*DPRc-VW/2)/cam.z+cam.x,(py*DPRc-VH/2)/cam.z+cam.y];}
-function takeControl(){if(tour.active||tour.moving){tour.active=false;tour.moving=false;tour.then=null;if(tour.state!=='final')tour.state='manual';}cam.mode='manual';updPlay();hint(0);}
+// the viewer takes the camera: stop any travel or auto-tour
+function takeControl(){tour.moving=false;tour.then=null;if(tour.auto){tour.auto=false;updPlay();}if(tour.state!=='final')tour.state=started?'free':'intro';hint(0);}
+// zooming in far enough, or letting go over a plate, locks onto it: its card appears and the arrows step from it
+let lockTimer=0;
+function lockCheck(snap){if(!started||tour.state==='overview'||tour.state==='final'&&cam.z<fitAllZ()*1.5)return;
+  const s=nearestPlate();if(!s)return;const fz=fitSceneZ(s);
+  if(cam.z>=fz*.5){const changed=tour.locked!==s.index;tour.locked=s.index;tour.idx=s.index;setCard(s.index);updNav();hideFinal();
+    if(changed)onArrive(s.index);}
+  else if(cam.z<fitAllZ()*1.25){tour.locked=-1;tour.state='overview';tour.sel=s.index;setCard(s.index,true);updNav();}
+  else if(cam.z<fz*.38&&tour.locked>=0){tour.locked=-1;setCard(-1);updNav();}}
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);drag.pts.set(e.pointerId,[e.clientX,e.clientY]);
-  if(drag.pts.size===1){drag.on=true;drag.x=drag.sx=e.clientX;drag.y=drag.sy=e.clientY;drag.t=performance.now();drag.moved=0;cam.vx=cam.vy=0;}
+  if(drag.pts.size===1){drag.on=true;drag.x=e.clientX;drag.y=e.clientY;drag.t=performance.now();drag.moved=0;cam.vx=cam.vy=0;}
   if(drag.pts.size===2){const [a,b]=[...drag.pts.values()];drag.pinch=Math.hypot(a[0]-b[0],a[1]-b[1]);}
 });
 cv.addEventListener('pointermove',e=>{
   if(drag.pts.has(e.pointerId))drag.pts.set(e.pointerId,[e.clientX,e.clientY]);
-  if(drag.pts.size>=2){const [a,b]=[...drag.pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(drag.pinch>0){takeControl();const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;zoomAt(mx,my,d/drag.pinch);}drag.pinch=d;drag.moved+=99;return;}
+  if(drag.pts.size>=2){const [a,b]=[...drag.pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(drag.pinch>0){takeControl();zoomAt((a[0]+b[0])/2,(a[1]+b[1])/2,d/drag.pinch);}drag.pinch=d;drag.moved+=99;return;}
   if(drag.on){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);
     if(drag.moved>5){takeControl();cv.classList.add('drag');cam.x-=dx*DPRc/cam.z;cam.y-=dy*DPRc/cam.z;const t=performance.now(),dtt=Math.max(1,t-drag.lastT)/1000;cam.vx=-dx*DPRc/cam.z/dtt*.6;cam.vy=-dy*DPRc/cam.z/dtt*.6;drag.lastT=t;}
     drag.x=e.clientX;drag.y=e.clientY;tipHide();return;}
   hover(e.clientX,e.clientY,e.pointerType);
 });
-function endPtr(e){drag.pts.delete(e.pointerId);if(drag.pts.size<2)drag.pinch=0;
+function endPtr(e){const wasPinch=drag.pinch>0||drag.pts.size>1;drag.pts.delete(e.pointerId);if(drag.pts.size<2)drag.pinch=0;
+  if(wasPinch){clearTimeout(lockTimer);lockTimer=setTimeout(()=>lockCheck(true),200);}
   if(drag.on&&drag.pts.size===0){drag.on=false;cv.classList.remove('drag');
     if(performance.now()-drag.lastT>90){cam.vx=cam.vy=0;}
-    if(drag.moved<6&&performance.now()-drag.t<500){const w=toWorld(e.clientX,e.clientY);const s=sceneAt(w[0],w[1]);if(s){focusPlate(s.index);}}}}
+    if(drag.moved<6&&performance.now()-drag.t<500){const w=toWorld(e.clientX,e.clientY);const s=sceneAt(w[0],w[1]);if(s){focusPlate(s.index);}}
+    else if(!wasPinch){clearTimeout(lockTimer);lockTimer=setTimeout(()=>lockCheck(false),350);}}}
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
 cv.addEventListener('pointerleave',()=>tipHide());
 function zoomAt(px,py,f){const w=toWorld(px,py);cam.z=clamp(cam.z*f,fitAllZ()*.6,Math.max(4.5*DPRc,fitAllZ()*30));cam.x=w[0]-(px*DPRc-VW/2)/cam.z;cam.y=w[1]-(py*DPRc-VH/2)/cam.z;}
-cv.addEventListener('wheel',e=>{e.preventDefault();takeControl();const k=e.deltaMode===1?40:1;zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*k*.0016));},{passive:false});
-function focusPlate(i){takeControl();tour.idx=i;setCard(i);const v=sceneView(SCENES[i]);tour.state='travel';travelTo(v,Math.min(3.2,travelDur(v)),()=>{tour.state='hold';tour.holdStart=now;tour.base={x:cam.x,y:cam.y,z:cam.z};onArrive(i);});hideFinal();}
+cv.addEventListener('wheel',e=>{e.preventDefault();takeControl();const k=e.deltaMode===1?40:1;zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*k*.0016));clearTimeout(lockTimer);lockTimer=setTimeout(()=>lockCheck(e.deltaY<0),260);},{passive:false});
+// clicking a plate locks onto it
+function focusPlate(i){if(!started){begin(i);return;}takeControl();goScene(i,Math.min(3,travelDur(sceneView(SCENES[i]))));}
 addEventListener('keydown',e=>{if(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))return;
+  const dirs={ArrowRight:[C30,S30],ArrowLeft:[-C30,-S30],ArrowUp:[C30,-S30],ArrowDown:[-C30,S30]};
+  if(inOverview()){
+    if(dirs[e.key]){e.preventDefault();if(tour.state==='intro'){overview(0);return;}const d=dirs[e.key];selectDir(d[0],d[1]);return;}
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();begin(tour.sel||0);return;}
+  }
   if(e.key==='ArrowRight'){e.preventDefault();step(1);}else if(e.key==='ArrowLeft'){e.preventDefault();step(-1);}
-  else if(e.key===' '){e.preventDefault();togglePlay();}else if(e.key==='0'||e.key==='Escape'){showAll();}else if(e.key==='s'||e.key==='S'){toggleSound();}
-  else if(e.key==='+'||e.key==='='){takeControl();zoomAt(innerWidth/2,innerHeight/2,1.25);}else if(e.key==='-'){takeControl();zoomAt(innerWidth/2,innerHeight/2,.8);}});
-function step(d){const i=tour.idx<0?0:clamp(tour.idx+d,0,SCENES.length-1);if(tour.active)goScene(i,true);else focusPlate(i);}
-function togglePlay(){if(tour.active){takeControl();}else{tour.active=true;cam.mode='tour';hint(0);if(tour.state==='final'||tour.state==='outro'||tour.idx>=SCENES.length-1&&tour.state!=='hold')goScene(0,true);else goScene(tour.idx<0?0:tour.idx,true);}updPlay();}
-function showAll(){takeControl();tour.state='manual';setCard(-1);travelTo({x:SHEET.w/2,y:SHEET.h/2,z:fitAllZ()},3.2,null);}
-const $=id=>document.getElementById(id);
-$('bPrev').onclick=()=>step(-1);$('bNext').onclick=()=>step(1);$('bPlay').onclick=togglePlay;$('bAll').onclick=showAll;$('bSnd').onclick=()=>toggleSound();
-function updPlay(){const b=$('bPlay');b.textContent=tour.active?'❚❚':'▶';b.setAttribute('aria-label',tour.active?'Pause tour':'Resume tour');b.classList.toggle('on',!tour.active);}
+  else if(e.key==='ArrowUp'||e.key==='0'||e.key==='Escape'){e.preventDefault();overview();}
+  else if(e.key===' '){e.preventDefault();togglePlay();}else if(e.key==='s'||e.key==='S'){toggleSound();}
+  else if(e.key==='+'||e.key==='='){takeControl();zoomAt(innerWidth/2,innerHeight/2,1.25);lockCheck(true);}else if(e.key==='-'){takeControl();zoomAt(innerWidth/2,innerHeight/2,.8);lockCheck(false);}});
+// the arrows step from the locked plate (or from the plate nearest the middle of the view)
+function curIndex(){if(tour.locked>=0)return tour.locked;if(tour.state==='final'||tour.state==='outro')return SCENES.length;const s=nearestPlate();return tour.idx>=0?tour.idx:(s?s.index-1:-1);}
+function step(d){if(inOverview()&&started){tour.sel=clamp((tour.sel||0)+d,0,SCENES.length-1);setCard(tour.sel,true);updNav();return;}if(!started){begin(0);return;}
+  const cur=tour.state==='final'||tour.state==='outro'?SCENES.length:(tour.locked>=0?tour.locked:tour.idx);
+  const n=cur+d;if(tour.auto){tour.auto=false;updPlay();}
+  if(n>=SCENES.length){if(tour.state!=='final'&&tour.state!=='outro')startOutro();return;}
+  if(n<0)return;tour.moving=false;goScene(n);}
+function togglePlay(){if(!started){begin(0);tour.auto=true;updPlay();return;}tour.auto=!tour.auto;updPlay();
+  if(tour.auto){if(tour.state==='final'||tour.state==='outro'||tour.idx<0)goScene(0);else if(tour.state!=='hold')goScene(tour.idx);else tour.holdStart=now;}}
+function showAll(){overview();}
+$('bPlay').onclick=togglePlay;$('bAll').onclick=showAll;$('bSnd').onclick=()=>toggleSound();
+$('nPrev').onclick=()=>step(-1);$('nNext').onclick=()=>step(1);
+function updPlay(){const b=$('bPlay');b.textContent=tour.auto?'❚❚ tour':'▶ tour';b.setAttribute('aria-label',tour.auto?'Pause the guided tour':'Play the guided tour');b.classList.toggle('on',tour.auto);}
+function updNav(){const on=started;const cur=inOverview()?(tour.sel||0):tour.state==='final'||tour.state==='outro'?SCENES.length:(tour.locked>=0?tour.locked:tour.idx);
+  const P=$('nPrev'),N=$('nNext');P.classList.toggle('show',on&&cur>0);N.classList.toggle('show',on&&cur<SCENES.length-(inOverview()?1:0));
+  const lab=(i)=>i>=SCENES.length?'Dawn over the whole sheet':`${SCENES[i].no} · ${SCENES[i].title}`;
+  if(cur>0){$('lPrev').textContent=lab(cur-1);P.setAttribute('aria-label','Previous: '+lab(cur-1));}
+  if(cur<SCENES.length){$('lNext').textContent=lab(cur+1<0?0:cur+1);N.setAttribute('aria-label','Next: '+lab(cur+1<0?0:cur+1));}}
 let hintOn=true;function hint(v){if(!v&&hintOn){hintOn=false;$('hint').style.opacity=0;}}
-setTimeout(()=>hint(0),14000);
 
 // ---- hover label ---------------------------------------------------------
-const tip=$('tip');let tipScene=null;
+const tip=$('tip');
 function hover(cx,cy,type){if(type==='touch')return;const w=toWorld(cx,cy);const s=sceneAt(w[0],w[1]);
-  if(s){tip.innerHTML=`<b>${s.no}</b>${s.title}`;tip.style.transform=`translate(${Math.min(cx+14,innerWidth-tip.offsetWidth-8)}px,${cy+16}px)`;tip.classList.add('show');cv.classList.add('over');tipScene=s;}else tipHide();}
-function tipHide(){tip.classList.remove('show');cv.classList.remove('over');tipScene=null;}
+  if(s){tip.innerHTML=`<b>${s.no}</b>${s.title}`;tip.style.transform=`translate(${Math.min(cx+14,innerWidth-tip.offsetWidth-8)}px,${cy+16}px)`;tip.classList.add('show');cv.classList.add('over');}else tipHide();}
+function tipHide(){tip.classList.remove('show');cv.classList.remove('over');}
 
 // ---- story card ------------------------------------------------------------
 let cardIdx=-99;
-function setCard(i){if(i===cardIdx)return;cardIdx=i;const c=$('card');c.classList.add('hide');
-  setTimeout(()=>{if(i>=0){const s=SCENES[i];$('cNo').innerHTML=`${s.no} <span>/ ${String(SCENES.length).padStart(2,'0')}</span>`;$('cTi').textContent=s.title;$('cQu').textContent=`“${s.quote}”`;$('cRf').textContent=s.ref||'';}
+function setCard(i,sel){const key=i+(sel?'s':'');if(key===cardIdx)return;cardIdx=key;const c=$('card');c.classList.add('hide');
+  setTimeout(()=>{if(i>=0){const s=SCENES[i];$('cNo').innerHTML=`${s.no} <span>/ ${String(SCENES.length).padStart(2,'0')}</span>`;$('cTi').textContent=s.title;$('cQu').textContent=`“${s.quote}”`;$('cRf').textContent=sel?(small()?'Tap the plate to go in':'Enter ↵ to go in · arrows to choose'):(s.ref||'');}
     else if(i===-2){$('cNo').innerHTML='— <span>/ 21</span>';$('cTi').textContent='The whole sheet';$('cQu').textContent='“The light shines in the darkness, and the darkness has not overcome it.”';$('cRf').textContent='John 1:5';}
-    else{$('cNo').innerHTML='00 <span>/ 21</span>';$('cTi').textContent='The Passion';$('cQu').textContent='Twenty-one plates in four inks, from the Upper Room to the empty tomb.';$('cRf').textContent='Risograph · Federal Blue · Bright Red · Teal · Yellow';}
-    c.classList.remove('hide');},420);}
+    else{$('cNo').innerHTML='00 <span>/ 21</span>';$('cTi').textContent='The Passion';$('cQu').textContent='Twenty-one plates in four inks, from the Upper Room to the empty tomb.';$('cRf').textContent='Zoom in or click a plate to look closer';}
+    if(started)c.classList.remove('hide');},420);}
 function hideFinal(){$('finA').classList.remove('show');$('finB').classList.remove('show');}
 
 // ---------------------------------------------------------------------
@@ -2346,41 +2644,60 @@ function targetMood(){
   if(!best||!best.mood)return{desat:0,dim:0,warm:0};const k=clamp((cam.z/fz-2.2)/2,0,1);
   return{desat:(best.mood.desat||0)*k,dim:(best.mood.dim||0)*k,warm:(best.mood.warm||0)*k};
 }
-function nearestPlate(){let best=null,bd=1e18;for(const s of SCENES){const c=sceneCenter(s);const d=Math.hypot(c[0]-cam.x,c[1]-cam.y);if(d<bd){bd=d;best=s;}}return best;}
 
 let last=performance.now(),frame=0;
+// crop marks at the corners of the plate you are locked onto
+function lockMarks(s,t,sel){const o=sceneOutline(s);let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of o){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]);}
+  const pad=8,L=Math.min(70,(x1-x0)*.06);x0-=pad;y0-=pad;x1+=pad;y1+=pad;const k=sel?.75+.25*Math.sin(t/260):clamp((t-(tour.lockAt||0))/500,0,1);
+  ctx.save();ctx.globalCompositeOperation='multiply';ctx.strokeStyle=inkCss('r',.85*k);ctx.lineWidth=2.2*DPRc/cam.z;ctx.lineCap='square';ctx.beginPath();
+  for(const [x,y,sx,sy] of [[x0,y0,1,1],[x1,y0,-1,1],[x0,y1,1,-1],[x1,y1,-1,-1]]){ctx.moveTo(x,y+sy*L);ctx.lineTo(x,y);ctx.lineTo(x+sx*L,y);}
+  ctx.stroke();
+  if(sel){ctx.fillStyle=inkCss('r',.07*k);ctx.beginPath();const o2=sceneOutline(s);ctx.moveTo(o2[0][0],o2[0][1]);for(const p of o2)ctx.lineTo(p[0],p[1]);ctx.closePath();ctx.fill();}
+  ctx.restore();}
+const ANIM_FPS=20,COMP_POOL=[];
+function composePlate(s,tt){
+  if(!s.comp){let c=null;const i=COMP_POOL.findIndex(k=>k.width===s.cw&&k.height===s.ch);if(i>=0)c=COMP_POOL.splice(i,1)[0];else{if(COMP_POOL.length>3)COMP_POOL.shift();c=makeCanvas(s.cw,s.ch);}s.comp=c;}
+  const g=s.comp.getContext('2d');g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.clearRect(0,0,s.cw,s.ch);
+  X=g;OFF=s.off;setPaperFor(s.bx,s.by,Q);
+  for(const L of s.layers){if(L.img)g.drawImage(L.img,L.x,L.y);else{try{s.drawLive(L,tt);}catch(e){LIVE_T=null;console.error(e);}}}
+  curTone=null;for(const fn of s.dyn){try{fn(tt);}catch(e){console.error(e);}}curTone=null;
+  s.compT=tt;s.loDirty=true;
+}
 function loop(t){
   now=t;const dt=Math.min(.05,(t-last)/1000);last=t;frame++;
   // print plates while the sheet is being shown
   const budget=performance.now();while(printed<SCENES.length&&performance.now()-budget<(printed<2?40:24)){printNext();if(frame<3)break;}
   if(printed<SCENES.length){$('status').textContent=`Printing plate ${String(printed+1).padStart(2,'0')} / ${SCENES.length}`;}
   else if(!$('status').dataset.done){$('status').dataset.done=1;$('status').textContent='Pull Nº 33 · dry';setTimeout(()=>$('status').style.opacity=0,2500);}
-  // tour start
-  if(tour.state==='intro'){const el=(t-T0)/1000;cam.z=fitAllZ()*(.92+.05*smooth(clamp(el/8,0,1)));if(el>1&&cardIdx===-99)setCard(-1);if(printed>=SCENES.length&&el>5.5&&tour.active)goScene(0,true);}
   camStep(dt);
-  // manual mode: card follows the plate you are looking at
-  if(cam.mode==='manual'&&!tour.moving&&tour.state!=='final'){const fz=fitAllZ();if(cam.z>fz*2.4){const s=nearestPlate();if(s&&s.index!==cardIdx){setCard(s.index);tour.idx=s.index;}}else if(cam.z<fz*1.4&&cardIdx>=0)setCard(-1);}
 
   ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   ctx.fillStyle='#e3d8c1';ctx.fillRect(0,0,VW,VH);
   drawSheet();
   const T=worldT();
-  // plates, back to front
+  // plates, back to front. Close up, a plate is drawn as its printed layers with the living
+  // figures in between; from afar, as its flattened pull.
+  const close=cam.z>=fitAllZ()*1.6,tt=t/1000;
   for(const s of SCENES){
     if(!s.img||!visible(s,T))continue;
     const a=clamp((t-s.printedAt)/700,0,1);
-    const ratio=cam.z/Q;const img=ratio<.3?s.lo2:ratio<.62?s.lo:s.img;
-    ctx.setTransform(...T);ctx.globalAlpha=a;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='low';
-    ctx.drawImage(img,s.bx,s.by,s.bw,s.bh);ctx.globalAlpha=1;
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='low';
+    if(!close){if(s.loDirty&&s.comp){s.loDirty=false;const hg=s.lo.getContext('2d');hg.clearRect(0,0,s.lo.width,s.lo.height);hg.drawImage(s.comp,0,0,s.lo.width,s.lo.height);const qg=s.lo2.getContext('2d');qg.clearRect(0,0,s.lo2.width,s.lo2.height);qg.drawImage(s.lo,0,0,s.lo2.width,s.lo2.height);}
+      const ratio=cam.z/Q;const img=ratio<.3?s.lo2:s.lo;ctx.setTransform(...T);ctx.globalAlpha=a;ctx.drawImage(img,s.bx,s.by,s.bw,s.bh);ctx.globalAlpha=1;continue;}
+    const sh=s.shake?s.shake(tt):[0,0];
+    // the plate is re-pulled at ANIM_FPS into its own canvas (figures, flames, particles), then placed each frame
+    // only plates in the middle of the view come alive; neighbours at the edges hold still
+    const sx0=s.bx*T[0]+T[4],sy0=s.by*T[0]+T[5],sx1=sx0+s.bw*T[0],sy1=sy0+s.bh*T[0];
+    const active=sx1>VW*.3&&sx0<VW*.7&&sy1>VH*.3&&sy0<VH*.7;
+    if(!s.comp||tt<s.compT||tt-s.compT>(active?1/ANIM_FPS:1/8)){composePlate(s,tt);}
+    s.compUsed=frame;
+    ctx.setTransform(...T);ctx.globalAlpha=a;ctx.drawImage(s.comp,s.bx+sh[0],s.by+sh[1],s.bw,s.bh);ctx.globalAlpha=1;
   }
-  // living details (flames, birds, dust) only when close enough to see them
-  for(const s of SCENES){
-    if(!s.img||!s.dyn.length||!visible(s,T))continue;
-    if(cam.z<fitAllZ()*1.6)continue;
-    ctx.setTransform(T[0]/Q,0,0,T[0]/Q,T[4]+s.bx*T[0],T[5]+s.by*T[0]);
-    X=ctx;OFF=s.off;setPaperFor(s.bx,s.by,Q);curTone=null;seed(s.seed+(frame%1));
-    const tt=t/1000;for(const fn of s.dyn){try{fn(tt);}catch(e){}}
-  }
+  // give back the canvases of plates that went out of view
+  if(frame%30===0)for(const s of SCENES)if(s.comp&&frame-s.compUsed>60){COMP_POOL.push(s.comp);s.comp=null;}
+  ctx.setTransform(...T);
+  if(tour.locked>=0&&tour.state!=='final')lockMarks(SCENES[tour.locked],t);
+  if(started&&inOverview()&&tour.sel>=0){lockMarks(SCENES[tour.sel],t,true);}
   ctx.setTransform(...T);
   // mood grading
   const tm=targetMood();const kk=1-Math.pow(.25,dt);for(const k in mood)mood[k]+=(tm[k]-mood[k])*kk;
@@ -2452,12 +2769,12 @@ function rooster(){blip(t=>{const o=AC.createOscillator();o.type='sawtooth';cons
   const P=[[0,480],[.12,720],[.35,690],[.55,780],[.95,760],[1.25,420]];for(const [dt,fr] of P)o.frequency.linearRampToValueAtTime(fr,t+dt);
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.09,t+.05);g.gain.setValueAtTime(.09,t+.3);g.gain.linearRampToValueAtTime(.06,t+.4);g.gain.linearRampToValueAtTime(.1,t+.55);g.gain.linearRampToValueAtTime(.08,t+1.0);g.gain.linearRampToValueAtTime(0,t+1.3);
   o.start(t);o.stop(t+1.4);});}
-function onArrive(i){if(SOUNDS[i]&&SOUNDS[i].rooster)SND.roosterAt=performance.now()+4200;}
+function onArrive(i){if(SCENES[i].arrivedAt===undefined)SCENES[i].arrivedAt=performance.now()/1000;tour.lockAt=performance.now();if(SOUNDS[i]&&SOUNDS[i].rooster)SND.roosterAt=performance.now()+4200;}
 function audioTick(dt){
   if(!AC||!SND.on)return;
   const fz=fitAllZ();let mix={room:.06,wind:.05};
   if(tour.state==='final'||tour.state==='outro')mix={dawn:.4,birds:.35,wind:.06};
-  else if(cam.z>fz*2.2&&tour.idx>=0){const s=cam.mode==='manual'?nearestPlate():SCENES[tour.idx];mix=SOUNDS[s.index]||mix;}
+  else if(cam.z>fz*2.2&&(tour.locked>=0||tour.idx>=0)){const s=SCENES[tour.locked>=0?tour.locked:tour.idx];mix=SOUNDS[s.index]||mix;}
   const tnow=AC.currentTime;
   for(const k of ['room','wind','crowd','fire','night','drone','dawn']){const g=SND.L[k];if(g)g.gain.setTargetAtTime((mix[k]||0)*(k==='crowd'?.9:k==='room'?1.4:1),tnow,1.2);}
   if(SND.voices&&mix.crowd){for(const v of SND.voices)if(Math.random()<dt*3)v.v.gain.setTargetAtTime(.1+Math.random()*.6,tnow,.12);}
