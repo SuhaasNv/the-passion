@@ -52,6 +52,39 @@
   .fin .a.show,.fin .b.show{opacity:1;}
   .fin .b span{display:block;font:500 9.5px/1.7 var(--label);letter-spacing:.3em;text-transform:uppercase;font-style:normal;}
 
+  /* loading: four inks pass over a registration mark while the plates are printed */
+  .loader{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:#f2e9d6;
+    background-image:radial-gradient(rgba(38,52,94,.07) .9px,transparent 1.2px);background-size:7px 7px;transition:opacity .9s ease, visibility 0s linear .9s;}
+  .loader.done{opacity:0;visibility:hidden;}
+  .ld{display:flex;flex-direction:column;align-items:center;gap:0;text-align:center;color:var(--navy);font-family:var(--label);}
+  .press{position:relative;width:112px;height:112px;}
+  .press i{position:absolute;left:28px;top:28px;width:56px;height:56px;border-radius:50%;mix-blend-mode:multiply;opacity:0;
+    animation:pass 3.2s cubic-bezier(.3,.7,.2,1) infinite;}
+  .press i.y{background:rgba(240,183,72,.95);--dx:-9px;--dy:-7px;animation-delay:0s;}
+  .press i.t{background:rgba(52,140,130,.85);--dx:8px;--dy:-8px;animation-delay:.35s;}
+  .press i.r{background:rgba(219,84,62,.85);--dx:-7px;--dy:8px;animation-delay:.7s;}
+  .press i.n{background:rgba(36,50,92,.9);--dx:8px;--dy:7px;animation-delay:1.05s;}
+  @keyframes pass{0%{opacity:0;transform:translate(calc(var(--dx)*3),calc(var(--dy)*3)) scale(1.35);}
+    18%{opacity:1;transform:translate(var(--dx),var(--dy)) scale(1);}72%{opacity:1;transform:translate(calc(var(--dx)*.35),calc(var(--dy)*.35)) scale(1);}
+    100%{opacity:0;transform:translate(0,0) scale(.96);}}
+  .press b{position:absolute;inset:0;}
+  .press b::before{content:"";position:absolute;left:22px;top:22px;width:66px;height:66px;border:1.5px solid rgba(36,50,92,.85);border-radius:50%;box-sizing:border-box;}
+  .press b::after{content:"";position:absolute;left:0;right:0;top:55px;height:1.5px;background:rgba(36,50,92,.85);box-shadow:0 0 0 0 transparent;}
+  .press s{position:absolute;top:0;bottom:0;left:55px;width:1.5px;background:rgba(36,50,92,.85);}
+  .press u{position:absolute;left:44px;top:44px;width:24px;height:24px;border:1.5px solid rgba(36,50,92,.85);border-radius:50%;box-sizing:border-box;animation:spin 3.2s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .ld-k{margin-top:26px;font:600 10px/1 var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--red);}
+  .ld-h{margin-top:10px;font:600 17px/1 var(--label);letter-spacing:.34em;text-transform:uppercase;padding-left:.34em;}
+  .ld-bar{margin-top:22px;width:220px;height:8px;position:relative;
+    background-image:radial-gradient(rgba(36,50,92,.18) 1.3px,transparent 1.6px);background-size:6px 6px;background-position:0 1px;}
+  .ld-bar i{position:absolute;left:0;top:0;bottom:0;width:0;transition:width .35s ease;
+    background-image:radial-gradient(rgba(219,84,62,.95) 2.1px,transparent 2.4px);background-size:6px 6px;background-position:0 1px;}
+  .ld-t{margin-top:12px;min-height:14px;font:italic 13px/1.1 var(--serif);color:#3a4468;}
+  .ld-n{margin-top:6px;font:9.5px/1 var(--mono);letter-spacing:.12em;color:rgba(38,52,94,.55);}
+  .start .st{transition:opacity .8s ease .15s, transform .8s ease .15s;}
+  .start.wait .st{opacity:0;transform:translateY(8px);pointer-events:none;}
+  @media (prefers-reduced-motion:reduce){.press i{animation:none;opacity:.8;transform:translate(var(--dx),var(--dy));}.press u{animation:none;}}
+
   /* start: a small museum label laid on the sheet */
   .start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:opacity .9s ease;}
   .start.gone{opacity:0;}
@@ -104,7 +137,7 @@
   <div class="rf" id="cRf"></div>
 </div>
 
-<div class="status" id="status">Inking plates…</div>
+<div class="status" id="status" style="opacity:0"></div>
 <div class="hint" id="hint" style="opacity:0">drag to wander · scroll or pinch to zoom<br>click a plate or zoom in to lock onto it</div>
 <div class="tip" id="tip"></div>
 
@@ -113,7 +146,18 @@
   <div class="b" id="finB"><span>The end of the journey</span><span>is the beginning of the story.</span></div>
 </div>
 
-<div class="start" id="start">
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="ld">
+    <div class="press" aria-hidden="true"><i class="y"></i><i class="t"></i><i class="r"></i><i class="n"></i><b></b><s></s><u></u></div>
+    <div class="ld-k">A print in four inks</div>
+    <div class="ld-h">The Passion</div>
+    <div class="ld-bar" aria-hidden="true"><i id="ldFill"></i></div>
+    <div class="ld-t" id="ldT">Mixing the inks…</div>
+    <div class="ld-n" id="ldN">00 / 21</div>
+  </div>
+</div>
+
+<div class="start wait" id="start">
   <div class="st" role="dialog" aria-labelledby="stT">
     <div class="k">A print in four inks · 21 plates</div>
     <h1 id="stT">The Passion</h1>
@@ -2379,7 +2423,8 @@ let VW=0,VH=0,DPRc=1;
 function resize(){DPRc=Math.min(window.devicePixelRatio||1,2.5);VW=Math.round(innerWidth*DPRc);VH=Math.round(innerHeight*DPRc);cv.width=VW;cv.height=VH;}
 resize();addEventListener('resize',()=>{resize();if(tour.state==='intro')cam.z=fitAllZ()*.92;});
 
-buildInkPatterns(ctx);buildInkPatterns(ctx,true);buildPaper(ctx);
+// the inks and paper are prepared after the loader has painted
+let inked=false;function prepareInks(){buildInkPatterns(ctx);buildInkPatterns(ctx,true);buildPaper(ctx);inked=true;}
 
 // ---- printing plates (progressively, a few per frame) ---------------------
 let printed=0;const T0=performance.now();
@@ -2504,7 +2549,7 @@ function zoomAt(px,py,f){const w=toWorld(px,py);cam.z=clamp(cam.z*f,fitAllZ()*.6
 cv.addEventListener('wheel',e=>{e.preventDefault();takeControl();const k=e.deltaMode===1?40:1;zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*k*.0016));clearTimeout(lockTimer);lockTimer=setTimeout(()=>lockCheck(e.deltaY<0),260);},{passive:false});
 // clicking a plate locks onto it
 function focusPlate(i){if(!started){begin(i);return;}takeControl();goScene(i,Math.min(3,travelDur(sceneView(SCENES[i]))));}
-addEventListener('keydown',e=>{if(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))return;
+addEventListener('keydown',e=>{if(printed<SCENES.length)return;if(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))return;
   const dirs={ArrowRight:[C30,S30],ArrowLeft:[-C30,-S30],ArrowUp:[C30,-S30],ArrowDown:[-C30,S30]};
   if(inOverview()){
     if(dirs[e.key]){e.preventDefault();if(tour.state==='intro'){overview(0);return;}const d=dirs[e.key];selectDir(d[0],d[1]);return;}
@@ -2666,9 +2711,12 @@ function composePlate(s,tt){
 function loop(t){
   now=t;const dt=Math.min(.05,(t-last)/1000);last=t;frame++;
   // print plates while the sheet is being shown
-  const budget=performance.now();while(printed<SCENES.length&&performance.now()-budget<(printed<2?40:24)){printNext();if(frame<3)break;}
-  if(printed<SCENES.length){$('status').textContent=`Printing plate ${String(printed+1).padStart(2,'0')} / ${SCENES.length}`;}
-  else if(!$('status').dataset.done){$('status').dataset.done=1;$('status').textContent='Pull Nº 33 · dry';setTimeout(()=>$('status').style.opacity=0,2500);}
+  if(!inked){prepareInks();$('ldT').textContent='Laying out the sheet…';}
+  // print plates behind the loader, a few per frame; the loader's own animation runs on the compositor
+  const budget=performance.now();while(printed<SCENES.length&&performance.now()-budget<45){printNext();}
+  if(printed<SCENES.length){const s=SCENES[printed];$('ldFill').style.width=(printed/SCENES.length*100)+'%';$('ldT').textContent=`Printing ${s.title}`;$('ldN').textContent=`${String(printed).padStart(2,'0')} / ${SCENES.length}`;}
+  else if(!$('loader').dataset.done){$('loader').dataset.done=1;$('ldFill').style.width='100%';$('ldT').textContent='The ink is dry.';$('ldN').textContent=`${SCENES.length} / ${SCENES.length}`;
+    setTimeout(()=>{$('loader').classList.add('done');setTimeout(()=>$('start').classList.remove('wait'),500);},550);}
   camStep(dt);
 
   ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
@@ -2785,7 +2833,8 @@ function audioTick(dt){
   if(SND.roosterAt&&performance.now()>SND.roosterAt){SND.roosterAt=0;rooster();}
 }
 
-requestAnimationFrame(loop);
+// let the loader paint first, then start preparing inks and printing
+requestAnimationFrame(()=>setTimeout(()=>requestAnimationFrame(loop),40));
 </script>
 </body>
 </html>

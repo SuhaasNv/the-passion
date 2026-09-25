@@ -1,0 +1,12 @@
+{
+  "name": "the-passion",
+  "version": "1.0.0",
+  "description": "Twenty-one isometric dioramas printed in four spot inks, from the Last Supper to the empty tomb. One HTML file, drawn entirely in code.",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
