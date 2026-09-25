@@ -18,20 +18,21 @@
   canvas#sheet.drag{cursor:grabbing;}
   canvas#sheet.over{cursor:pointer;}
 
-  .card{position:fixed;left:18px;bottom:18px;width:236px;box-sizing:border-box;padding:10px 12px 11px;
+  .card{position:fixed;left:24px;bottom:24px;width:min(420px,calc(100vw - 48px));box-sizing:border-box;padding:18px 22px 18px;
     background:rgba(243,236,222,.94);color:var(--navy);border:1px solid rgba(38,52,94,.28);
-    box-shadow:2px 2px 0 rgba(212,83,63,.18);font-family:var(--label);pointer-events:none;
+    box-shadow:4px 4px 0 rgba(212,83,63,.22);font-family:var(--label);pointer-events:none;
     transition:opacity .6s ease, transform .6s ease;}
   .card.hide{opacity:0;transform:translateY(4px);}
-  .card .no{font:600 10px/1 var(--mono);color:var(--red);letter-spacing:.08em;}
+  .card .no{font:600 17px/1 var(--mono);color:var(--red);letter-spacing:.08em;}
   .card .no span{color:rgba(38,52,94,.45);font-weight:400;}
-  .card .ti{margin-top:5px;font:600 11px/1.25 var(--label);letter-spacing:.16em;text-transform:uppercase;}
-  .card .qu{margin-top:6px;font:italic 12.5px/1.38 var(--serif);color:#2f3b62;}
-  .card .rf{margin-top:5px;font:9px/1 var(--mono);letter-spacing:.06em;color:rgba(38,52,94,.5);}
+  .card .ti{margin-top:10px;font:600 19px/1.25 var(--label);letter-spacing:.14em;text-transform:uppercase;}
+  .card .qu{margin-top:10px;font:italic 21px/1.4 var(--serif);color:#2f3b62;}
+  .card .rf{margin-top:10px;font:13px/1.3 var(--mono);letter-spacing:.05em;color:rgba(38,52,94,.6);}
 
-  .ctl{position:fixed;right:14px;bottom:16px;display:flex;gap:2px;font-family:var(--mono);}
-  .ctl button{appearance:none;border:1px solid rgba(38,52,94,.25);background:rgba(243,236,222,.9);color:var(--navy);
-    font:10px/1 var(--mono);letter-spacing:.06em;padding:6px 8px;cursor:pointer;border-radius:0;min-width:28px;}
+  .ctl{position:fixed;right:20px;bottom:24px;display:flex;gap:3px;font-family:var(--mono);}
+  .ctl button{appearance:none;border:1px solid rgba(38,52,94,.28);background:rgba(243,236,222,.92);color:var(--navy);
+    font:12.5px/1 var(--mono);letter-spacing:.06em;padding:9px 12px;cursor:pointer;border-radius:0;min-width:40px;min-height:36px;}
+  .ctl button.end{color:var(--red);border-color:rgba(212,83,63,.45);}
   .ctl button:hover{background:#efe4cc;}
   .ctl button:focus-visible{outline:1px solid var(--red);outline-offset:1px;}
   .ctl button.on{color:var(--red);}
@@ -119,8 +120,10 @@
     .nav.prev{left:8px;} .nav.next{right:8px;}
     .nav span{display:none;}
     .st{width:calc(100% - 40px);max-width:320px;}
-    .card{left:10px;right:10px;bottom:52px;width:auto;}
+    .card{left:10px;right:10px;bottom:58px;width:auto;padding:13px 15px;}
+    .card .no{font-size:14px;} .card .ti{font-size:15px;margin-top:7px;} .card .qu{font-size:16.5px;margin-top:7px;} .card .rf{font-size:11px;margin-top:7px;}
     .ctl{right:10px;left:10px;bottom:10px;justify-content:flex-end;}
+    .ctl button{font-size:11.5px;padding:8px 10px;}
     .hint{display:none;}
     .status{left:12px;top:10px;}
   }
@@ -175,6 +178,7 @@
   <button id="bPlay" title="Play the guided tour (space)" aria-label="Play the guided tour">▶ tour</button>
   <button id="bAll" title="See the whole sheet (0)" aria-label="Whole sheet">▢</button>
   <button id="bSnd" title="Sound (s)" aria-label="Toggle sound">♪ off</button>
+  <button id="bEnd" class="end" title="End: back to the title (Home)" aria-label="End and return to the title">■ end</button>
 </div>
 
 <script>
@@ -2420,7 +2424,9 @@ const SCENES=PLATES.map((p,i)=>new Scene(Object.assign({index:i,seed:strSeed(p.t
 
 const cv=document.getElementById('sheet'),ctx=cv.getContext('2d');
 let VW=0,VH=0,DPRc=1;
-function resize(){DPRc=Math.min(window.devicePixelRatio||1,2.5);VW=Math.round(innerWidth*DPRc);VH=Math.round(innerHeight*DPRc);cv.width=VW;cv.height=VH;}
+// quality level: 0 full, 1 lighter, 2 lightest (chosen from measured frame times)
+let QUALITY=0;const DPR_CAP=[2,1.5,1];
+function resize(){DPRc=Math.min(window.devicePixelRatio||1,DPR_CAP[QUALITY]);VW=Math.round(innerWidth*DPRc);VH=Math.round(innerHeight*DPRc);cv.width=VW;cv.height=VH;}
 resize();addEventListener('resize',()=>{resize();if(tour.state==='intro')cam.z=fitAllZ()*.92;});
 
 // the inks and paper are prepared after the loader has painted
@@ -2451,8 +2457,8 @@ function inPoly(p,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=
 function sceneAt(wx,wy){for(let i=SCENES.length-1;i>=0;i--){if(inPoly([wx,wy],sceneOutline(SCENES[i])))return SCENES[i];}return null;}
 function fitAllZ(){return Math.min(VW/SHEET.w,VH/SHEET.h)*0.97;}
 function small(){return innerWidth<640;}
-function fitSceneZ(s){const [w,h]=sceneSize(s);const padB=small()?innerHeight*.30:(innerHeight<700?110:80);const side=small()?44:130;const avW=(VW-2*side*DPRc)*(small()?.98:.9),avH=(VH-padB*DPRc)*(small()?.86:.84);return Math.min(avW/w,avH/h);}
-function sceneView(s){const c=sceneCenter(s);const z=fitSceneZ(s);const shiftY=(small()?innerHeight*.14:30)*DPRc/z;return{x:c[0],y:c[1]+shiftY,z};}
+function fitSceneZ(s){const [w,h]=sceneSize(s);const padB=small()?innerHeight*.34:(innerHeight<700?150:120);const side=small()?44:130;const avW=(VW-2*side*DPRc)*(small()?.98:.9),avH=(VH-padB*DPRc)*(small()?.86:.84);return Math.min(avW/w,avH/h);}
+function sceneView(s){const c=sceneCenter(s);const z=fitSceneZ(s);const shiftY=(small()?innerHeight*.16:58)*DPRc/z;return{x:c[0],y:c[1]+shiftY,z};}
 function nearestPlate(){const ws=[cam.x,cam.y];const hit=sceneAt(ws[0],ws[1]);if(hit)return hit;let best=null,bd=1e18;for(const s of SCENES){const c=sceneCenter(s);const d=Math.hypot(c[0]-cam.x,c[1]-cam.y);if(d<bd){bd=d;best=s;}}return best;}
 
 // ---- camera ------------------------------------------------------------
@@ -2488,7 +2494,7 @@ function camStep(dt){
       const f=s.W(s.focus[0],s.focus[1],s.focus[2]||0);const k2=smooth(clamp((ht-H*.2)/(H*.6),0,1))*.18;bx=lerp(bx,f[0],k2);by=lerp(by,f[1],k2);}
     cam.x=bx+drift*k*.5+(noise1(now/2600,3)-.5)*4;cam.y=by-6*k+(noise1(now/2900,9)-.5)*3;cam.z=bz*(1+.02*k);
     if(tour.auto&&ht>H){if(tour.idx<SCENES.length-1)goScene(tour.idx+1);else startOutro();}
-  }else if(tour.state==='intro'){
+  }else if(tour.state==='intro'&&!tour.moving){
     const el=(now-T0)/1000;cam.z=fitAllZ()*(.9+.04*Math.sin(el*.12));cam.x=SHEET.w/2+Math.sin(el*.09)*SHEET.w*.012;cam.y=SHEET.h/2+Math.cos(el*.07)*SHEET.h*.01;
   }else if(!drag.on){
     cam.x+=cam.vx*dt;cam.y+=cam.vy*dt;cam.vx*=Math.pow(.02,dt);cam.vy*=Math.pow(.02,dt);
@@ -2549,7 +2555,10 @@ function zoomAt(px,py,f){const w=toWorld(px,py);cam.z=clamp(cam.z*f,fitAllZ()*.6
 cv.addEventListener('wheel',e=>{e.preventDefault();takeControl();const k=e.deltaMode===1?40:1;zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*k*.0016));clearTimeout(lockTimer);lockTimer=setTimeout(()=>lockCheck(e.deltaY<0),260);},{passive:false});
 // clicking a plate locks onto it
 function focusPlate(i){if(!started){begin(i);return;}takeControl();goScene(i,Math.min(3,travelDur(sceneView(SCENES[i]))));}
-addEventListener('keydown',e=>{if(printed<SCENES.length)return;if(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))return;
+addEventListener('keydown',e=>{if(printed<SCENES.length)return;
+  if(inOverview()&&started&&(e.key==='Enter'||e.key===' ')){e.preventDefault();begin(tour.sel||0);return;}
+  if(e.key==='Home'){e.preventDefault();endJourney();return;}
+  if(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))return;
   const dirs={ArrowRight:[C30,S30],ArrowLeft:[-C30,-S30],ArrowUp:[C30,-S30],ArrowDown:[-C30,S30]};
   if(inOverview()){
     if(dirs[e.key]){e.preventDefault();if(tour.state==='intro'){overview(0);return;}const d=dirs[e.key];selectDir(d[0],d[1]);return;}
@@ -2570,6 +2579,13 @@ function togglePlay(){if(!started){begin(0);tour.auto=true;updPlay();return;}tou
   if(tour.auto){if(tour.state==='final'||tour.state==='outro'||tour.idx<0)goScene(0);else if(tour.state!=='hold')goScene(tour.idx);else tour.holdStart=now;}}
 function showAll(){overview();}
 $('bPlay').onclick=togglePlay;$('bAll').onclick=showAll;$('bSnd').onclick=()=>toggleSound();
+$('bEnd').onclick=()=>endJourney();
+// a clicked control should not keep the keyboard: arrows and Enter belong to the sheet
+for(const b of document.querySelectorAll('.ctl button,.nav'))b.addEventListener('click',()=>{if(b.matches(':focus-visible'))return;b.blur();});
+function endJourney(){takeControl();tour.auto=false;updPlay();tour.locked=-1;tour.idx=-1;tour.sel=0;hideFinal();started=false;tour.state='intro';
+  cardIdx=-99;$('card').classList.add('hide');tipHide();updNav();
+  travelTo({x:SHEET.w/2,y:SHEET.h/2,z:fitAllZ()*.92},2.4,()=>{tour.state='intro';});tour.state='intro';
+  $('start').classList.remove('gone','wait');setTimeout(()=>$('bStart').focus({preventScroll:true}),400);}
 $('nPrev').onclick=()=>step(-1);$('nNext').onclick=()=>step(1);
 function updPlay(){const b=$('bPlay');b.textContent=tour.auto?'❚❚ tour':'▶ tour';b.setAttribute('aria-label',tour.auto?'Pause the guided tour':'Play the guided tour');b.classList.toggle('on',tour.auto);}
 function updNav(){const on=started;const cur=inOverview()?(tour.sel||0):tour.state==='final'||tour.state==='outro'?SCENES.length:(tour.locked>=0?tour.locked:tour.idx);
@@ -2699,7 +2715,13 @@ function lockMarks(s,t,sel){const o=sceneOutline(s);let x0=1e9,y0=1e9,x1=-1e9,y1
   ctx.stroke();
   if(sel){ctx.fillStyle=inkCss('r',.07*k);ctx.beginPath();const o2=sceneOutline(s);ctx.moveTo(o2[0][0],o2[0][1]);for(const p of o2)ctx.lineTo(p[0],p[1]);ctx.closePath();ctx.fill();}
   ctx.restore();}
-const ANIM_FPS=20,COMP_POOL=[];
+let ANIM_FPS=18;const COMP_POOL=[];
+// adaptive quality: watch real frame times and trade resolution/animation rate for smoothness
+const perf={ema:16,since:0,lastKey:''};
+function adaptQuality(frameMs,t){perf.ema=perf.ema*.94+frameMs*.06;
+  if(t-perf.since<2500)return;
+  if(perf.ema>34&&QUALITY<2){QUALITY++;perf.since=t;resize();ANIM_FPS=QUALITY===1?14:10;perf.ema=20;}
+  else if(perf.ema<15&&QUALITY>0&&t-perf.since>8000){QUALITY--;perf.since=t;resize();ANIM_FPS=QUALITY===0?18:14;}}
 function composePlate(s,tt){
   if(!s.comp){let c=null;const i=COMP_POOL.findIndex(k=>k.width===s.cw&&k.height===s.ch);if(i>=0)c=COMP_POOL.splice(i,1)[0];else{if(COMP_POOL.length>3)COMP_POOL.shift();c=makeCanvas(s.cw,s.ch);}s.comp=c;}
   const g=s.comp.getContext('2d');g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.clearRect(0,0,s.cw,s.ch);
@@ -2718,6 +2740,13 @@ function loop(t){
   else if(!$('loader').dataset.done){$('loader').dataset.done=1;$('ldFill').style.width='100%';$('ldT').textContent='The ink is dry.';$('ldN').textContent=`${SCENES.length} / ${SCENES.length}`;
     setTimeout(()=>{$('loader').classList.add('done');setTimeout(()=>$('start').classList.remove('wait'),500);},550);}
   camStep(dt);
+  // nothing moves and nothing is alive on screen: keep the last frame (saves battery and heat)
+  const key=[cam.x.toFixed(1),cam.y.toFixed(1),cam.z.toFixed(4),tour.state,tour.sel,tour.locked,VW,VH,printed].join('|');
+  const settled=Math.abs(mood.desat)+Math.abs(mood.dim)+Math.abs(mood.warm)<.002||tour.state==='final';
+  const idle=key===perf.lastKey&&cam.z<fitAllZ()*1.6&&settled&&tour.state!=='final'&&printed>=SCENES.length&&!(started&&inOverview());
+  perf.lastKey=key;
+  if(idle&&frame%20!==0){audioTick(dt);requestAnimationFrame(loop);return;}
+  const f0=performance.now();
 
   ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   ctx.fillStyle='#e3d8c1';ctx.fillRect(0,0,VW,VH);
@@ -2756,6 +2785,7 @@ function loop(t){
   if(mood.warm>.01){ctx.setTransform(...T);dawnRings(mood.warm);ctx.setTransform(1,0,0,1,0,0);}
   if(tour.state==='final'){const el=(t-tour.finalAt)/1000;ctx.setTransform(...T);storyPath(clamp(el/7,0,1));
     if(el>6.5)$('finA').classList.add('show');if(el>10)$('finB').classList.add('show');}
+  if(printed>=SCENES.length&&!document.hidden)adaptQuality(performance.now()-f0+ (dt*1000>40?dt*1000-16:0),t);
   audioTick(dt);
   requestAnimationFrame(loop);
 }
