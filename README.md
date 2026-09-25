@@ -18,3 +18,5 @@ npm start        # http://localhost:3000
 1. In Railway: **New Project → Deploy from GitHub repo →** pick this repository (and branch).
 2. Railway detects Node and runs `npm start` (see `railway.json`); the health check is `/healthz`.
 3. In the service's **Settings → Networking**, click **Generate Domain** to get the public link.
+
+Live: https://the-passion-production.up.railway.app
